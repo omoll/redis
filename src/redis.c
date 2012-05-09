@@ -245,8 +245,9 @@ struct redisCommand redisCommandTable[] = {
     {"slowlog",slowlogCommand,-2,"r",0,NULL,0,0,0,0,0},
     {"script",scriptCommand,-2,"ras",0,NULL,0,0,0,0,0},
     {"time",timeCommand,1,"rR",0,NULL,0,0,0,0,0},
-    {"add2d",zset2DAddCommand,-4,"wm",0,NULL,1,1,1,0,0} //ADDED(tfk)
-
+    {"add2d",zset2DAddCommand,-3,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"build2d",zset2DBuildTreeCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"range2d",zset2DRangeSearchCommand,5,"wm",0,NULL,1,1,1,0,0} //ADDED(tfk)
 };
 
 /*============================ Utility functions ============================ */

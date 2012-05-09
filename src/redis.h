@@ -1244,8 +1244,10 @@ void evalCommand(redisClient *c);
 void evalShaCommand(redisClient *c);
 void scriptCommand(redisClient *c);
 void timeCommand(redisClient *c);
-void zset2DAddCommand(redisClient *c);
 
+void zset2DAddCommand(redisClient *c);
+void zset2DBuildTreeCommand(redisClient *c);
+void zset2DRangeSearchCommand(redisClient *c);
 
 #if defined(__GNUC__)
 void *calloc(size_t count, size_t size) __attribute__ ((deprecated));
@@ -1265,4 +1267,5 @@ sds genRedisInfoString(char *section);
 void enableWatchdog(int period);
 void disableWatchdog(void);
 void watchdogScheduleSignal(int period);
+
 #endif
