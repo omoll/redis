@@ -378,6 +378,7 @@ struct sharedObjectsStruct {
 typedef struct zskiplistNode {
     robj *obj;
     double score;
+    double secondscore;
     struct zskiplistNode *backward;
     struct zskiplistLevel {
         struct zskiplistNode *forward;
@@ -983,6 +984,7 @@ typedef struct {
     int minex, maxex; /* are min or max exclusive? */
 } zrangespec;
 
+
 zskiplist *zslCreate(void);
 void zslFree(zskiplist *zsl);
 zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj);
@@ -1189,8 +1191,10 @@ void debugCommand(redisClient *c);
 void msetCommand(redisClient *c);
 void msetnxCommand(redisClient *c);
 void zaddCommand(redisClient *c);
+void zadd2dCommand(redisClient *c); //rimoll
 void zincrbyCommand(redisClient *c);
 void zrangeCommand(redisClient *c);
+void zrangebyscore2dCommand(redisClient *c); //rimoll
 void zrangebyscoreCommand(redisClient *c);
 void zrevrangebyscoreCommand(redisClient *c);
 void zcountCommand(redisClient *c);
@@ -1244,7 +1248,6 @@ void evalCommand(redisClient *c);
 void evalShaCommand(redisClient *c);
 void scriptCommand(redisClient *c);
 void timeCommand(redisClient *c);
-void zset2DAddCommand(redisClient *c);
 
 
 #if defined(__GNUC__)
