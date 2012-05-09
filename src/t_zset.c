@@ -2,6 +2,8 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 /*-----------------------------------------------------------------------------
  * Sorted set API
  *----------------------------------------------------------------------------*/
@@ -22,6 +24,14 @@
  * c) there is a back pointer, so it's a doubly linked list with the back
  * pointers being only at "level 1". This allows to traverse the list
  * from tail to head, useful for ZREVRANGE. */
+double filterTotalTime;
+double oscar_get_time()
+{
+    struct timeval t;
+    struct timezone tzp;
+    gettimeofday(&t, &tzp);
+    return t.tv_sec + t.tv_usec*1e-6;
+}
 
 zskiplistNode *zslCreateNode(int level, double score, robj *obj) {
     zskiplistNode *zn = zmalloc(sizeof(*zn)+level*sizeof(struct zskiplistLevel));
@@ -1996,8 +2006,10 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
     /* Ok, lookup the key and get the range */
     if ((zobj = lookupKeyReadOrReply(c,key,shared.emptymultibulk)) == NULL ||
         checkType(c,zobj,REDIS_ZSET)) return;
-
+    
     if (zobj->encoding == REDIS_ENCODING_SKIPLIST) {
+        double start_time = oscar_get_time();
+        double end_time = 0;
         zset *zs = zobj->ptr;
         zskiplist *zsl = zs->zsl;
         zskiplistNode *ln;
@@ -2006,6 +2018,9 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
 
         /* No "first" element in the specified interval. */
         if (ln == NULL) {
+            end_time = oscar_get_time();
+            filterTotalTime += end_time - start_time;
+            printf("total time spent querying so far %f \n", filterTotalTime);
             addReply(c, shared.emptymultibulk);
             return;
         }
@@ -2051,6 +2066,10 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
 	    ln = ln->level[0].forward;
 		
         }
+    end_time = oscar_get_time();
+    filterTotalTime += end_time - start_time;
+    printf("total time spent querying so far %f \n", filterTotalTime);
+
     } else {
         redisPanic("Unknown sorted set encoding");
     }
@@ -2058,7 +2077,6 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
     if (withscores) {
         rangelen *= 2;
     }
-
     setDeferredMultiBulkLength(c, replylen, rangelen);
 }
 
