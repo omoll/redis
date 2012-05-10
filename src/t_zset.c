@@ -2067,6 +2067,7 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
         rangelen *= 2;
     }
     addReplyLongLong(c,rangelen);
+    printf("result: %lu\n", rangelen);
     //setDeferredMultiBulkLength(c, replylen, rangelen);
 }
 
