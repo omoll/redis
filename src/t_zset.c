@@ -2013,7 +2013,8 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
         zskiplistNode *ln;
 
         double start_time = oscar_get_time();
-	printf("START total time spent querying so far %f \n", filterTotalTime);
+        //int resultCount = 0;
+	//printf("START total time spent querying so far %f \n", filterTotalTime);
 
 	ln = zslFirstInRange(zsl,range);
 
@@ -2050,6 +2051,7 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
 	    
 	    if (rangey.min <= ln->secondscore && rangey.max > ln->secondscore){
 	        rangelen++;
+         //       resultCount++;
    	        //addReplyBulk(c,ln->obj);
 	    }
 
@@ -2057,7 +2059,7 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
         }
     end_time = oscar_get_time();
     filterTotalTime += end_time - start_time;
-    printf("END total time spent querying so far %f \n", filterTotalTime);
+    printf("END total time spent querying so far %f %d \n", filterTotalTime, rangelen);
 
     } else {
         redisPanic("Unknown sorted set encoding");
