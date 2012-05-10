@@ -2059,7 +2059,7 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
         }
     end_time = oscar_get_time();
     filterTotalTime += end_time - start_time;
-    printf("END total time spent querying so far %f %d \n", filterTotalTime, rangelen);
+    printf("END total time spent querying so far %f %lu \n", filterTotalTime, rangelen);
 
     } else {
         redisPanic("Unknown sorted set encoding");
@@ -2069,7 +2069,6 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
         rangelen *= 2;
     }
     addReplyLongLong(c,rangelen);
-    printf("result: %lu\n", rangelen);
     //setDeferredMultiBulkLength(c, replylen, rangelen);
 }
 
