@@ -41,12 +41,9 @@ zskiplistNode *zslCreateNode(int level, double score, robj *obj) {
 }
 
 zskiplistNode *zslCreateNode2d(int level, double score, double secondscore, robj *obj) {
-    printf("zslCreateNode2d\n");
     zskiplistNode *zn = zmalloc(sizeof(*zn)+level*sizeof(struct zskiplistLevel));
     zn->score = score;
     zn->secondscore = secondscore;
-    printf("setting score: %f", zn->score);
-    printf("setting secondscore: %f", zn->secondscore);
     zn->obj = obj;
     return zn;
 }
@@ -963,7 +960,6 @@ void zaddGenericCommand(redisClient *c, int incr) {
             ele = c->argv[4 +j*3] = tryObjectEncoding(c->argv[4+j*3]);
             de = dictFind(zs->dict,ele);
             if (de != NULL) {
-	      printf("path1\n");
                 curobj = dictGetKey(de);
                 curscore = *(double*)dictGetVal(de);
 
@@ -991,7 +987,6 @@ void zaddGenericCommand(redisClient *c, int incr) {
                     server.dirty++;
                 }
             } else {
-	      printf("path2\n");
 	        znode = zslInsert2d(zs->zsl,score, secondscore, ele);
                 incrRefCount(ele); /* Inserted in skiplist. */
 
@@ -1796,7 +1791,7 @@ void zrange2dGenericCommand(redisClient *c, int reverse) {
         redisPanic("Unknown sorted set encoding");
     }
 
-    printf("rangelen: %d actual rangelen: %d\n", rangelen, actualrangelen);
+
     rangelen = actualrangelen;
 
 
@@ -1964,7 +1959,7 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
     long offset = 0, limit = -1;
     int withscores = 0;
     unsigned long rangelen = 0;
-    void *replylen = NULL;
+    //void *replylen = NULL;
     int minidx, maxidx, minidy, maxidy;
 
     /* Parse the range arguments. */
@@ -1986,9 +1981,13 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
     rangey.min = strtod(c->argv[minidy]->ptr, NULL);
     rangey.max = strtod(c->argv[maxidy]->ptr, NULL);
 
-    printf("y range min: %f, range max %f\n", rangey.min, rangey.max);
-    rangey.minex = 0;
+    rangey.minex = 1;
     rangey.maxex = 0;
+
+    /*correct ranges so they are inc minx inc maxy, but exclusive
+      otherwise, like the kdtrees implemented by tfk*/
+    range.minex = 0;
+    range.maxex = 1;
 			
     /* if (zslParseRange(c->argv[minidy],c->argv[maxidy],&rangey) != REDIS_OK) { */
     /*     addReplyError(c,"miny or maxy is not a float"); */
@@ -2008,11 +2007,13 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
         checkType(c,zobj,REDIS_ZSET)) return;
     
     if (zobj->encoding == REDIS_ENCODING_SKIPLIST) {
-        double start_time = oscar_get_time();
         double end_time = 0;
         zset *zs = zobj->ptr;
         zskiplist *zsl = zs->zsl;
         zskiplistNode *ln;
+
+        double start_time = oscar_get_time();
+	printf("START total time spent querying so far %f \n", filterTotalTime);
 
 	ln = zslFirstInRange(zsl,range);
 
@@ -2020,7 +2021,7 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
         if (ln == NULL) {
             end_time = oscar_get_time();
             filterTotalTime += end_time - start_time;
-            printf("total time spent querying so far %f \n", filterTotalTime);
+
             addReply(c, shared.emptymultibulk);
             return;
         }
@@ -2028,7 +2029,7 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
         /* We don't know in advance how many matching elements there are in the
          * list, so we push this object that will represent the multi-bulk
          * length in the output buffer, and will "fix" it later */
-        replylen = addDeferredMultiBulkLength(c);
+        //replylen = addDeferredMultiBulkLength(c);
 
         /* If there is an offset, just traverse the number of elements without
          * checking the score because that is done in the next loop. */
@@ -2044,31 +2045,19 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
 	/* print_zrangespec(rangey); */
 
         while (ln && limit--) {
-	    printf("score: %f\n", ln->score);
-	    printf("secondscore: %f\n", ln->secondscore);
             /* Abort when the node is no longer in range. */
-            if (reverse) {
-                if (!zslValueGteMin(ln->score,&range)) break;
-            } else {
-                if (!zslValueLteMax(ln->score,&range)) break;
-            } 
+	  if (!zslValueLteMax(ln->score,&range)) break;
 	    
-	    if (rangey.min <= ln->secondscore && rangey.max >= ln->secondscore){
+	    if (rangey.min <= ln->secondscore && rangey.max > ln->secondscore){
 	        rangelen++;
-   	        addReplyBulk(c,ln->obj);
-
-		/* need to adjust this to show both scores*/
-                if (withscores) {
-                    addReplyDouble(c,ln->score);
-		}
+   	        //addReplyBulk(c,ln->obj);
 	    }
 
 	    ln = ln->level[0].forward;
-		
         }
     end_time = oscar_get_time();
     filterTotalTime += end_time - start_time;
-    printf("total time spent querying so far %f \n", filterTotalTime);
+    printf("END total time spent querying so far %f \n", filterTotalTime);
 
     } else {
         redisPanic("Unknown sorted set encoding");
@@ -2077,7 +2066,8 @@ void genericZrangebyscoreCommand(redisClient *c, int reverse) {
     if (withscores) {
         rangelen *= 2;
     }
-    setDeferredMultiBulkLength(c, replylen, rangelen);
+    addReplyLongLong(c,rangelen);
+    //setDeferredMultiBulkLength(c, replylen, rangelen);
 }
 
 void zrangebyscoreCommand(redisClient *c) {

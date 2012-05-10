@@ -419,9 +419,9 @@ void quadTreeDelete(quadTreeNode* n, quadTreeKey key){
 // For debugging purposes.
 void walkQuadTree(quadTreeNode* a){
   if (a->children == NULL) {
-    for (int i = a->start; i < a->end; i++) {
-      printf("element (%f, %f) \n", a->elements[i].x, a->elements[i].y); 
-    }
+    /* for (int i = a->start; i < a->end; i++) { */
+    /*   printf("element (%f, %f) \n", a->elements[i].x, a->elements[i].y);  */
+    /* } */
     return;
   } else {
     walkQuadTree(a->children[0]);
@@ -465,7 +465,7 @@ void quadTreeRangeSearch(quadTreeNode *n, double x1, double x2, double y1, doubl
     for (int i = n->start; i < n->end; i++) {
       if (quadTreeKeyInRange(n->elements[i], x1, x2, y1, y2)){
         (*count)++;
-        printf("Element (%f, %f) in range \n", n->elements[i].x, n->elements[i].y);
+        /* printf("Element (%f, %f) in range \n", n->elements[i].x, n->elements[i].y); */
       }
     }
     return;
