@@ -19,6 +19,48 @@ typedef struct cascading_node {
   struct cascading_node *right;
 } cascading_node_t;
 
+
+
+/*the value at *end is meant to be a sentinel MAX_INT
+ *gives you the succesor position (smallest elt greater than or equal to value)
+ */
+double* binary_successor_search(double value, double* start, double* end){
+
+  while(start < end){
+    double * middle =  start + (end-start)/2;
+    if ( value < *middle ) {
+      end = middle;
+    } else if ( value > *middle ){
+      start = middle + 1;
+    } else {
+      return middle;
+    }
+  }
+
+  return end;
+}
+
+/*
+  binary searches for the index of the successor (greater than or
+  equal) to the value in the node array, 
+  only meant to be used on the root.
+*/
+int arg_successor_root(double yvalue, cascading_node_t *root){
+  return binary_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
+}
+
+/*yindex is an index for on the parent
+ */
+int arg_successor_left(int yindex, cascading_node_t *parent){
+  return parent->left_successor[yindex];
+}
+
+int arg_successor_right(int yindex, cascading_node_t *parent){
+  return parent->right_successor[yindex];
+}
+
+
+
 int cascading_node_is_leaf(cascading_node_t *cn){
   return cn->left == NULL;
 }
@@ -106,6 +148,9 @@ void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, ca
   cn->left = left;
   cn->right = right;
 
+  
+  
+  
 
   int i, j;
   for (i = 0, j = 0;  i < left->size || j < right->size; ){
@@ -113,17 +158,28 @@ void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, ca
       cn->ys[i+j] = left->ys[i];
       cn->xs[i+j] = left->xs[i];
 
-      cn->left_successor[i+j] = i;
-      cn->right_successor[i+j] = cn->right_successor[i+j-1] + 1;
+      /* cn->left_successor[i+j] = i; */
+
+      /* cn->right_successor[i+j] = cn->right_successor[i+j-1] + 1; */
+      /* //this is wrong. too. */
+
       i++; 
     } else { //right has next smallest
       cn->ys[i+j] = right->ys[j];
       cn->xs[i+j] = right->xs[j];
 
-      cn->left_successor[i+j] = cn->left_successor[i+j-1] + 1;//copy previous
-      cn->right_successor[i+j] = j;
+      /* cn->left_successor[i+j] = cn->left_successor[i+j-1] + 1; */
+      /* //this may be wrong,  because it keeps increasing the other one,  */
+      /* // but  when it maxes out it shoudl no longer be increased. */
+
+      /* cn->right_successor[i+j] = j; */
       j++;
     }
+  }
+
+  for (i = 0; i < cn->size; i++){
+    cn->left_successor[i] = arg_successor_root(cn->ys[i], cn->left);
+    cn->right_successor[i] = arg_successor_root(cn->ys[i], cn->right);
   }
 
   check_rep_cascading_node(cn);
@@ -166,45 +222,6 @@ void cascading_node_print(cascading_node_t *cn){
   }
 }
 
-/*the value at *end is meant to be a sentinel MAX_INT
- *gives you the succesor position (smallest elt greater than or equal to value)
- */
-double* binary_successor_search(double value, double* start, double* end){
-
-  while(start < end){
-    double * middle =  start + (end-start)/2;
-    if ( value < *middle ) {
-      end = middle;
-    } else if ( value > *middle ){
-      start = middle + 1;
-    } else {
-      return middle;
-    }
-  }
-
-  return end;
-}
-
-/*
-  binary searches for the index of the successor (greater than or
-  equal) to the value in the node array, 
-  only meant to be used on the root.
-*/
-int arg_successor_root(double yvalue, cascading_node_t *root){
-  return binary_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
-}
-
-/*yindex is an index for on the parent
- */
-int arg_successor_left(int yindex, cascading_node_t *parent){
-  return parent->left_successor[yindex];
-}
-
-int arg_successor_right(int yindex, cascading_node_t *parent){
-  return parent->right_successor[yindex];
-}
-
-
 
 void test1(){
  double avalx[] = {1, 3, 5};
@@ -243,7 +260,20 @@ void test1(){
    assert(cnode.right_successor[i] == expected_right[i]);
  }
 
- /*write test case later*/
+ double ays1[] = {1, 2, 3};
+ double axs1[] = {1, 2, 3};
+ cascading_node_t anode1;
+ cascading_node_leaf_init(&anode1, axs1, ays1, 3);
+
+ double bys1[] = {4,5};
+ double bxs1[] = {4,5};
+ cascading_node_t bnode1;
+ cascading_node_leaf_init(&bnode1, bxs1, bys1, 2);
+
+ cascading_node_t cnode1;
+ cascading_node_parent_init(&cnode1, &anode1, &bnode1);
+ /* cascading_node_print(&cnode1); */
+
  /* int ays[] = {0, 1, 2, 3, 4}; */
  /* int axs[] = {10, 11, 12, 13, 14}; */
  /* int anode2 = cascading_node */
