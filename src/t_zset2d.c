@@ -95,7 +95,7 @@ int quadTreeElementCompareX(const void* a, const void* b){
   if (((quadTreeKey*) a)->x < ((quadTreeKey*) b)->x) {
     return -1;
   }
-  if (((quadTreeKey*) a)->x > ((quadTreeKey*) b)->x) {
+  if (((quadTreeKey*) a)->x < ((quadTreeKey*) b)->x) {
     return 1;
   }
   return 0;
@@ -105,7 +105,7 @@ int quadTreeElementCompareY(const void* a, const void* b){
   if (((quadTreeKey*) a)->y < ((quadTreeKey*) b)->y) {
     return -1;
   }
-  if (((quadTreeKey*) a)->y > ((quadTreeKey*) b)->y) {
+  if (((quadTreeKey*) a)->y < ((quadTreeKey*) b)->y) {
     return 1;
   }
   return 0;
@@ -221,13 +221,11 @@ void buildQuadTreeNode(quadTreeNode* n, quadTreeKey* elements, int elementCount,
     n->children[0] = (quadTreeNode*) zmalloc(sizeof(quadTreeNode));
     n->children[1] = (quadTreeNode*) zmalloc(sizeof(quadTreeNode));
 
-    n->children[0]->elementCount = n->elementCount / 2 + n->elementCount % 2;
+    n->children[0]->elementCount = n->elementCount / 2 + n->elementCount%2;
     n->children[1]->elementCount = n->elementCount - n->children[0]->elementCount; 
 
     n->children[0]->children = NULL;
     n->children[1]->children = NULL;
-
-    //assert(n->y1 <= medianY.y);
 
     n->children[0]->x1 = n->x1;
     n->children[0]->x2 = n->x2;
@@ -237,7 +235,6 @@ void buildQuadTreeNode(quadTreeNode* n, quadTreeKey* elements, int elementCount,
     n->children[0]->start = 0;
     n->children[0]->end = 0;
 
-    //assert(medianY.y >= n->y2);
     n->children[1]->x1 = n->x1;
     n->children[1]->x2 = n->x2;
     n->children[1]->y1 = medianY.y;
@@ -257,13 +254,12 @@ void buildQuadTreeNode(quadTreeNode* n, quadTreeKey* elements, int elementCount,
     n->children[0] = (quadTreeNode*) zmalloc(sizeof(quadTreeNode));
     n->children[1] = (quadTreeNode*) zmalloc(sizeof(quadTreeNode));
 
-    n->children[0]->elementCount = n->elementCount / 2 + n->elementCount % 2;
+    n->children[0]->elementCount = n->elementCount / 2 + n->elementCount%2;
     n->children[1]->elementCount = n->elementCount - n->children[0]->elementCount; 
 
     n->children[0]->children = NULL;
     n->children[1]->children = NULL;
 
-    //assert(n->x1 <= medianX.x);
     n->children[0]->x1 = n->x1;
     n->children[0]->x2 = medianX.x;
     n->children[0]->y1 = n->y1;
@@ -272,7 +268,6 @@ void buildQuadTreeNode(quadTreeNode* n, quadTreeKey* elements, int elementCount,
     n->children[0]->start = 0;
     n->children[0]->end = 0;
 
-    //assert(medianX.x <= n->x2);
     n->children[1]->x1 = medianX.x;
     n->children[1]->x2 = n->x2;
     n->children[1]->y1 = n->y1;
@@ -424,9 +419,9 @@ void quadTreeDelete(quadTreeNode* n, quadTreeKey key){
 // For debugging purposes.
 void walkQuadTree(quadTreeNode* a){
   if (a->children == NULL) {
-    /* for (int i = a->start; i < a->end; i++) { */
-    /*   printf("element (%f, %f) \n", a->elements[i].x, a->elements[i].y);  */
-    /* } */
+    for (int i = a->start; i < a->end; i++) {
+      printf("element (%f, %f) \n", a->elements[i].x, a->elements[i].y); 
+    }
     return;
   } else {
     walkQuadTree(a->children[0]);
@@ -445,21 +440,22 @@ bool quadTreeKeyInRange(quadTreeKey key, double x1, double x2, double y1, double
 
 // returns true if a node intersects with the given range, false otherwise.
 bool quadTreeNodeIntersectsRange(quadTreeNode* n, double x1, double x2, double y1, double y2) {
-  // ranges lies to the left.
-  if (x1 > n->x1 && x1 > n->x2 && x2 > n->x1 && x2 > n->x2) {
+  // check if range lies completely to the right or left of n 
+  if (x2 > n->x2 && x1 > n->x2) {
     return false;
   }
-  if (x1 < n->x1 && x1 < n->x2 && x2 < n->x1 && x2 < n->x2) {
+  if (x2 < n->x1 && x1 < n->x1) {
     return false;
   }
- 
-  if (y1 > n->y1 && y1 > n->y2 && y2 > n->y1 && y2 > n->y2) {
+
+  // check if range lies complarely above or below n
+  if (y1 > n->y2 && y2 > n->y2) {
     return false;
   }
-  if (y1 < n->y1 && y1 < n->y2 && y2 < n->y1 && y2 < n->y2) {
+  if (y1 < n->y1 && y2 < n->y1) {
     return false;
   }
- 
+
   // otherwise this range intersects with the range a.w. n.
   return true;
 }
@@ -469,7 +465,7 @@ void quadTreeRangeSearch(quadTreeNode *n, double x1, double x2, double y1, doubl
     for (int i = n->start; i < n->end; i++) {
       if (quadTreeKeyInRange(n->elements[i], x1, x2, y1, y2)){
         (*count)++;
-        /* printf("Element (%f, %f) in range \n", n->elements[i].x, n->elements[i].y); */
+        printf("Element (%f, %f) in range \n", n->elements[i].x, n->elements[i].y);
       }
     }
     return;
@@ -494,7 +490,6 @@ quadTreeKey* allElements;
 int allElementsCount;
 int currentAllElementsArraySize;
 double totalQueryTime;
-
 void tfk2DRangeSearchCommand(redisClient* c) {
   double x1 = strtod(c->argv[1]->ptr, NULL);
   double x2 = strtod(c->argv[2]->ptr, NULL);
@@ -504,15 +499,8 @@ void tfk2DRangeSearchCommand(redisClient* c) {
   double start_time = tfk_get_time();
   quadTreeRangeSearch(rangeTreeRoot, x1, x2, y1, y2, &count);
   double end_time = tfk_get_time();
-/*
-  for (int i = 0; i < allElementsCount; i++) {
-    if (quadTreeKeyInRange(allElements[i], x1, x2, y1, y2)) {
-      count++;
-    }
-  }
-*/
   totalQueryTime += end_time - start_time;
-  printf("total query time %f rangeTreeCount: %d \n", totalQueryTime, count); 
+  printf("total query time %f \n", totalQueryTime); 
   addReplyLongLong(c, count);
 }
 
@@ -531,8 +519,8 @@ void tfkBuildTreeCommand(redisClient *c) {
 
   // rebuild using the allElements array.
   buildQuadTreeNode(rangeTreeRoot, allElements, allElementsCount, 1);
+ 
   walkQuadTree(rangeTreeRoot);
-
   addReplyLongLong(c, 42);
 }
 

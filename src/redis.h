@@ -1249,9 +1249,16 @@ void evalShaCommand(redisClient *c);
 void scriptCommand(redisClient *c);
 void timeCommand(redisClient *c);
 
+
+// commands for kd tree
 void zset2DAddCommand(redisClient *c);
 void zset2DBuildTreeCommand(redisClient *c);
 void zset2DRangeSearchCommand(redisClient *c);
+
+// commands for layered range tree.
+void layeredRangeTree2DAddCommand(redisClient *c);
+void layeredRangeTree2DBuildTreeCommand(redisClient *c);
+void layeredRangeTree2DRangeSearchCommand(redisClient *c);
 
 #if defined(__GNUC__)
 void *calloc(size_t count, size_t size) __attribute__ ((deprecated));

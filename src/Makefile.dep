@@ -101,6 +101,10 @@ t_zset.o: t_zset.c redis.h fmacros.h config.h ../deps/lua/src/lua.h \
 t_zset2d.o: t_zset2d.c redis.h fmacros.h config.h ../deps/lua/src/lua.h \
   ../deps/lua/src/luaconf.h ae.h sds.h dict.h adlist.h zmalloc.h anet.h \
   ziplist.h intset.h version.h util.h rdb.h rio.h 
+t_layered2dtree.o: t_layered2dtree.c redis.h fmacros.h config.h ../deps/lua/src/lua.h \
+  ../deps/lua/src/luaconf.h ae.h sds.h dict.h adlist.h zmalloc.h anet.h \
+  ziplist.h intset.h version.h util.h rdb.h rio.h 
+
 util.o: util.c fmacros.h util.h
 ziplist.o: ziplist.c zmalloc.h util.h ziplist.h endianconv.h
 zipmap.o: zipmap.c zmalloc.h endianconv.h
