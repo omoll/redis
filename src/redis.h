@@ -1260,6 +1260,12 @@ void layeredRangeTree2DAddCommand(redisClient *c);
 void layeredRangeTree2DBuildTreeCommand(redisClient *c);
 void layeredRangeTree2DRangeSearchCommand(redisClient *c);
 
+// commands for layered range tree plus.
+void layeredRangeTreePlus2DAddCommand(redisClient *c);
+void layeredRangeTreePlus2DBuildTreeCommand(redisClient *c);
+void layeredRangeTreePlus2DRangeSearchCommand(redisClient *c);
+
+
 #if defined(__GNUC__)
 void *calloc(size_t count, size_t size) __attribute__ ((deprecated));
 void free(void *ptr) __attribute__ ((deprecated));
