@@ -4,6 +4,8 @@
 #include <float.h>
 #include <string.h>
 
+
+
 int min(int a, int b){
   return (a < b)? a : b;
 }
@@ -19,12 +21,25 @@ typedef struct cascading_node {
   struct cascading_node *right;
 } cascading_node_t;
 
-
+void cascading_node_print(cascading_node_t *cn);
 
 /*the value at *end is meant to be a sentinel MAX_INT
  *gives you the succesor position (smallest elt greater than or equal to value)
  */
+
+double* linear_successor_search(double value, double* start, double* end){
+  while( !(*start >= value)){
+    start++;
+  }
+
+  return start;
+}
+
+/*CURRENTLY BUGGY, CHECK TEST CASES.
+ */
 double* binary_successor_search(double value, double* start, double* end){
+
+  double *initial_start = start;
 
   while(start < end){
     double * middle =  start + (end-start)/2;
@@ -33,6 +48,18 @@ double* binary_successor_search(double value, double* start, double* end){
     } else if ( value > *middle ){
       start = middle + 1;
     } else {
+
+      // right now, do this stupidly
+      while( *middle == value  && middle > start){
+	middle--;
+      }
+      
+      if (middle != initial_start){
+	return middle + 1;
+      } else {
+	return middle;
+      }
+
       return middle;
     }
   }
@@ -46,7 +73,8 @@ double* binary_successor_search(double value, double* start, double* end){
   only meant to be used on the root.
 */
 int arg_successor_root(double yvalue, cascading_node_t *root){
-  return binary_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
+  //TODO:when debugged binary search and place here.
+  return linear_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
 }
 
 /*yindex is an index for on the parent
@@ -58,8 +86,6 @@ int arg_successor_left(int yindex, cascading_node_t *parent){
 int arg_successor_right(int yindex, cascading_node_t *parent){
   return parent->right_successor[yindex];
 }
-
-
 
 int cascading_node_is_leaf(cascading_node_t *cn){
   return cn->left == NULL;
@@ -80,8 +106,8 @@ void check_rep_cascading_node(cascading_node_t *c){
   int i;
   //no repeated ys, 
   for (i = 0; i < c->size; i++){
-    assert(c->ys[i] < c->ys[i+1]);
-    // assert(c->ys[i] < DBL_MAX);
+    assert(c->ys[i] <= c->ys[i+1]);
+    assert(c->ys[i] < DBL_MAX);
   }
 
   if (!cascading_node_is_leaf(c)){
@@ -89,22 +115,18 @@ void check_rep_cascading_node(cascading_node_t *c){
     assert(*( c->left_successor - 1 ) == -1);
     assert(*( c->right_successor - 1 ) == -1);
 
-      int max_size_left = 0; int max_size_right = 0;
       for (i = 0; i < c->size; i++){
 	//check indices into left array all make sense
 	assert( c->left_successor[i] > -1 && c->left_successor[i] >= c->left_successor[i-1]
 		&& c->left_successor[i] <= c->left->size);
-	if (c->left_successor[i] == c->left->size) max_size_left = 1;
 
 	//check indices into right child all make sense
 	assert(c->right_successor[i] > -1);
 	assert(c->right_successor[i] >= c->right_successor[i-1]);
 	assert(c->right_successor[i] <= c->right->size);
-
-	if (c->right_successor[i] == c->right->size) max_size_right = 1;
       }
 
-      assert(max_size_right ^ max_size_left);
+
   }
 
 }
@@ -148,10 +170,6 @@ void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, ca
   cn->left = left;
   cn->right = right;
 
-  
-  
-  
-
   int i, j;
   for (i = 0, j = 0;  i < left->size || j < right->size; ){
     if (left->ys[i] < right->ys[j]){ //left has next smallest elt.
@@ -182,6 +200,7 @@ void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, ca
     cn->right_successor[i] = arg_successor_root(cn->ys[i], cn->right);
   }
 
+  //  cascading_node_print(cn);
   check_rep_cascading_node(cn);
   assert(!cascading_node_is_leaf(cn));
 }
@@ -219,6 +238,7 @@ void cascading_node_print(cascading_node_t *cn){
     for (i = 0; i < cn->size; i ++){
       printf("%d,", cn->right_successor[i]);
     }
+    printf("\n");
   }
 }
 
@@ -290,20 +310,59 @@ void test1(){
 
 }
 
+void testLinearSuccessorSearch(){
+  double a1[] = {0.0, 2.0, 4.0, 6.0, DBL_MAX};
+  assert(*linear_successor_search(-10, a1, a1+4) == 0.0);
+  assert(*linear_successor_search(0, a1, a1+4) == 0.0);
+  assert(*linear_successor_search(1, a1, a1+4) == 2.0);
+  assert(*linear_successor_search(2, a1, a1+4) == 2.0);
+  assert(*linear_successor_search(3, a1, a1+4) == 4.0);
+  assert(*linear_successor_search(4, a1, a1+4) == 4.0);
+  assert(*linear_successor_search(4.2, a1, a1+4) == 6.0);
+  assert(*linear_successor_search(10, a1, a1+4) == DBL_MAX);
+  assert(*linear_successor_search(100, a1, a1+4) == DBL_MAX);
+}
 
 void testBinarySuccessorSearch(){
   double a1[] = {0.0, 2.0, 4.0, 6.0, DBL_MAX};
-  assert(*binary_successor_search(-10, a1, a1+4) == 0);
-  assert(*binary_successor_search(0, a1, a1+4) == 0);
-  assert(*binary_successor_search(1, a1, a1+4) == 2);
-  assert(*binary_successor_search(2, a1, a1+4) == 2);
-  assert(*binary_successor_search(3, a1, a1+4) == 4);
-  assert(*binary_successor_search(4, a1, a1+4) == 4);
+  assert(*binary_successor_search(-10, a1, a1+4) == 0.0);
+  assert(*binary_successor_search(0, a1, a1+4) == 0.0);
+  assert(*binary_successor_search(1, a1, a1+4) == 2.0);
+  assert(*binary_successor_search(2, a1, a1+4) == 2.0);
+  assert(*binary_successor_search(3, a1, a1+4) == 4.0);
+  assert(*binary_successor_search(4, a1, a1+4) == 4.0);
+  assert(*binary_successor_search(4.2, a1, a1+4) == 6.0);
   assert(*binary_successor_search(10, a1, a1+4) == DBL_MAX);
   assert(*binary_successor_search(100, a1, a1+4) == DBL_MAX);
 }
 
+void testBinaraySuccessorRepeated(){
+  double a1[] = {1, 1, 2, 2, 3, 3, 4};
+  cascading_node_t cn;
+  cascading_node_leaf_init(&cn, a1, a1, 7);
+  
+  assert( arg_successor_root(-1, &cn) == 0);
+  assert( arg_successor_root(1, &cn) == 0);
+  assert( arg_successor_root(1.5, &cn) == 2);
+  assert( arg_successor_root(2.5, &cn) == 4);
+  assert( arg_successor_root(4.1, &cn) == 7);
+}
+
+void test_merge_with_repeats(){
+  cascading_node_t an, bn, cn;
+  double as[] = {0, 1, 1, 2, 3};
+  double bs[] = {0, 1, 2};
+
+  cascading_node_leaf_init(&an, as, as, 4);
+  cascading_node_leaf_init(&bn, bs, bs, 3);
+  cascading_node_parent_init(&cn, &an, &bn);
+  //  cascading_node_print(&cn);
+}
+
+
 int main(){
-  testBinarySuccessorSearch();
+  testLinearSuccessorSearch();
+  // testBinarySuccessorSearch();
   test1();
+  test_merge_with_repeats();
 }
