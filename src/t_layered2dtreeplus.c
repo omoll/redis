@@ -91,6 +91,46 @@ int min(int a, int b){
   return (a < b)? a : b;
 }
 
+
+/*the value at *end is meant to be a sentinel MAX_INT
+ *gives you the succesor position (smallest elt greater than or equal to value)
+ */
+double* binary_successor_search(double value, double* start, double* end){
+
+  while(start < end){
+    double * middle =  start + (end-start)/2;
+    if ( value < *middle ) {
+      end = middle;
+    } else if ( value > *middle ){
+      start = middle + 1;
+    } else {
+      return middle;
+    }
+  }
+
+  return end;
+}
+
+/*
+  binary searches for the index of the successor (greater than or
+  equal) to the value in the node array, 
+  only meant to be used on the root.
+*/
+int arg_successor_root(double yvalue, cascading_node_t *root){
+  return binary_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
+}
+
+/*yindex is an index for on the parent
+ */
+int arg_successor_left(int yindex, cascading_node_t *parent){
+  return parent->left_successor[yindex];
+}
+
+int arg_successor_right(int yindex, cascading_node_t *parent){
+  return parent->right_successor[yindex];
+}
+
+
 int cascading_node_is_leaf(cascading_node_t *cn){
   return cn->left == NULL;
 }
@@ -137,6 +177,9 @@ void check_rep_cascading_node(cascading_node_t *c){
       assert(max_size_right ^ max_size_left);
   }
 
+
+
+
 }
 
 void cascading_node_leaf_init(cascading_node_t *cn, double *x, double *y, int size){
@@ -170,14 +213,17 @@ void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, ca
   cn->xs = (double *)zmalloc(cn->size*sizeof(double));
 
   //allocate an array of size +1 length, the -1 entry gets inited to 0
-  cn->left_successor = (int *) zmalloc((cn->size+1)*sizeof(int)) + 1;
+  cn->left_successor = (int *)zmalloc((cn->size+1)*sizeof(int)) + 1;
   *(cn->left_successor - 1) = -1;
-  cn->right_successor = (int *) zmalloc((cn->size+1)*sizeof(int)) + 1;
+  cn->right_successor = (int *)zmalloc((cn->size+1)*sizeof(int)) + 1;
   *(cn->right_successor - 1) = -1;
 
   cn->left = left;
   cn->right = right;
 
+  
+  
+  
 
   int i, j;
   for (i = 0, j = 0;  i < left->size || j < right->size; ){
@@ -185,22 +231,34 @@ void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, ca
       cn->ys[i+j] = left->ys[i];
       cn->xs[i+j] = left->xs[i];
 
-      cn->left_successor[i+j] = i;
-      cn->right_successor[i+j] = cn->right_successor[i+j-1] + 1;
+      /* cn->left_successor[i+j] = i; */
+
+      /* cn->right_successor[i+j] = cn->right_successor[i+j-1] + 1; */
+      /* //this is wrong. too. */
+
       i++; 
     } else { //right has next smallest
       cn->ys[i+j] = right->ys[j];
       cn->xs[i+j] = right->xs[j];
 
-      cn->left_successor[i+j] = cn->left_successor[i+j-1] + 1;//copy previous
-      cn->right_successor[i+j] = j;
+      /* cn->left_successor[i+j] = cn->left_successor[i+j-1] + 1; */
+      /* //this may be wrong,  because it keeps increasing the other one,  */
+      /* // but  when it maxes out it shoudl no longer be increased. */
+
+      /* cn->right_successor[i+j] = j; */
       j++;
     }
+  }
+
+  for (i = 0; i < cn->size; i++){
+    cn->left_successor[i] = arg_successor_root(cn->ys[i], cn->left);
+    cn->right_successor[i] = arg_successor_root(cn->ys[i], cn->right);
   }
 
   check_rep_cascading_node(cn);
   assert(!cascading_node_is_leaf(cn));
 }
+
 
 
 /*
@@ -236,44 +294,6 @@ void cascading_node_print(cascading_node_t *cn){
       printf("%d,", cn->right_successor[i]);
     }
   }
-}
-
-/*the value at *end is meant to be a sentinel MAX_INT
- *gives you the succesor position (smallest elt greater than or equal to value)
- */
-double* binary_successor_search(double value, double* start, double* end){
-
-  while(start < end){
-    double * middle =  start + (end-start)/2;
-    if ( value < *middle ) {
-      end = middle;
-    } else if ( value > *middle ){
-      start = middle + 1;
-    } else {
-      return middle;
-    }
-  }
-
-  return end;
-}
-
-/*
-  binary searches for the index of the successor (greater than or
-  equal) to the value in the node array, 
-  only meant to be used on the root.
-*/
-int arg_successor_root(double yvalue, cascading_node_t *root){
-  return binary_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
-}
-
-/*yindex is an index for on the parent
- */
-int arg_successor_left(int yindex, cascading_node_t *parent){
-  return parent->left_successor[yindex];
-}
-
-int arg_successor_right(int yindex, cascading_node_t *parent){
-  return parent->right_successor[yindex];
 }
 
 
