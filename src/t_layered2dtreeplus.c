@@ -97,6 +97,8 @@ int min(int a, int b){
  */
 double* binary_successor_search(double value, double* start, double* end){
 
+  double *initial_start = start;
+
   while(start < end){
     double * middle =  start + (end-start)/2;
     if ( value < *middle ) {
@@ -104,7 +106,16 @@ double* binary_successor_search(double value, double* start, double* end){
     } else if ( value > *middle ){
       start = middle + 1;
     } else {
-      return middle;
+      while(middle >= initial_start && *middle == value  ){
+	middle--;
+      }
+      
+      if (middle != initial_start){
+	return middle + 1;
+      } else {
+	return middle;
+      }
+
     }
   }
 
@@ -150,8 +161,8 @@ void check_rep_cascading_node(cascading_node_t *c){
   int i;
   //no repeated ys, 
   for (i = 0; i < c->size; i++){
-    assert(c->ys[i] < c->ys[i+1]);
-    // assert(c->ys[i] < DBL_MAX);
+    assert(c->ys[i] <= c->ys[i+1]);
+    assert(c->ys[i] < DBL_MAX);
   }
 
   if (!cascading_node_is_leaf(c)){
