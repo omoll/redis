@@ -247,17 +247,17 @@ struct redisCommand redisCommandTable[] = {
     {"script",scriptCommand,-2,"ras",0,NULL,0,0,0,0,0},
     {"time",timeCommand,1,"rR",0,NULL,0,0,0,0,0},
 
-    {"add2d",zset2DAddCommand,-3,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
-    {"build2d",zset2DBuildTreeCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
-    {"range2d",zset2DRangeSearchCommand,5,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"add2dk",zset2DAddCommand,-3,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"build2dk",zset2DBuildTreeCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"range2dk",zset2DRangeSearchCommand,5,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
 
     {"add2dlayered", layeredRangeTree2DAddCommand,-3,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
     {"build2dlayered", layeredRangeTree2DBuildTreeCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
     {"range2dlayered", layeredRangeTree2DRangeSearchCommand, 5,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
 
-    {"add2dplus", layeredRangeTreePlus2DAddCommand,-3,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
-    {"build2dplus", layeredRangeTreePlus2DBuildTreeCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
-    {"range2dplus", layeredRangeTreePlus2DRangeSearchCommand, 5,"wm",0,NULL,1,1,1,0,0} //ADDED(tfk)
+    {"add2d", layeredRangeTreePlus2DAddCommand,-3,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"build2", layeredRangeTreePlus2DBuildTreeCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"range2d", layeredRangeTreePlus2DRangeSearchCommand, 5,"wm",0,NULL,1,1,1,0,0} //ADDED(tfk)
 
 };
 

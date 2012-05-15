@@ -20,15 +20,12 @@ double tfkLayeredRangeTreePlus_get_time()
     return t.tv_sec + t.tv_usec*1e-6;
 }
 
-/*
-  Type Defs
-*/
-typedef struct layeredRangeTreePlusKey{
-  double x;
-  double y;
-  void* value;
-} layeredRangeTreePlusKey;
 
+
+
+int min(int a, int b){
+  return (a < b)? a : b;
+}
 
 typedef struct cascading_node {
   int size; // array sizes
@@ -40,6 +37,200 @@ typedef struct cascading_node {
   struct cascading_node *left;
   struct cascading_node *right;
 } cascading_node_t;
+
+void cascading_node_print(cascading_node_t *cn);
+
+/*the value at *end is meant to be a sentinel MAX_INT
+ *gives you the succesor position (smallest elt greater than or equal to value)
+ */
+
+double* linear_successor_search(double value, double* start, double* end){
+  while( !(*start >= value)){
+    start++;
+  }
+
+  return start;
+}
+
+/*CURRENTLY BUGGY, CHECK TEST CASES.
+ */
+double* binary_successor_search(double value, double* start, double* end){
+
+  double *initial_start = start;
+
+  while(start < end){
+    double * middle =  start + (end-start)/2;
+    if ( value < *middle ) {
+      end = middle;
+    } else if ( value > *middle ){
+      start = middle + 1;
+    } else {
+
+      // right now, do this stupidly
+      while( *middle == value  && middle > start){
+	middle--;
+      }
+      
+      if (middle != initial_start){
+	return middle + 1;
+      } else {
+	return middle;
+      }
+
+      return middle;
+    }
+  }
+
+  return end;
+}
+
+/*
+  binary searches for the index of the successor (greater than or
+  equal) to the value in the node array, 
+  only meant to be used on the root.
+*/
+int arg_successor_root(double yvalue, cascading_node_t *root){
+  //TODO:when debugged binary search and place here.
+  return linear_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
+}
+
+/*yindex is an index for on the parent
+ */
+int arg_successor_left(int yindex, cascading_node_t *parent){
+  return parent->left_successor[yindex];
+}
+
+int arg_successor_right(int yindex, cascading_node_t *parent){
+  return parent->right_successor[yindex];
+}
+
+int cascading_node_is_leaf(cascading_node_t *cn){
+  return cn->left == NULL;
+}
+
+void check_rep_cascading_node(cascading_node_t *c){
+  assert(c->size > 0); 
+
+  //leaf condition all or none should be NULL
+  if (cascading_node_is_leaf(c)){
+    assert(c->left_successor == NULL);
+    assert(c->left == NULL); 
+    assert(c->right_successor == NULL);
+    assert(c->right == NULL); 
+  }
+  // sentinel
+  assert(c->ys[c->size] == DBL_MAX);
+  int i;
+  //no repeated ys, 
+  for (i = 0; i < c->size; i++){
+    assert(c->ys[i] <= c->ys[i+1]);
+    assert(c->ys[i] < DBL_MAX);
+  }
+
+  if (!cascading_node_is_leaf(c)){
+    //sentinels inited to -1
+    assert(*( c->left_successor - 1 ) == -1);
+    assert(*( c->right_successor - 1 ) == -1);
+
+      for (i = 0; i < c->size; i++){
+	//check indices into left array all make sense
+	assert( c->left_successor[i] > -1 && c->left_successor[i] >= c->left_successor[i-1]
+		&& c->left_successor[i] <= c->left->size);
+
+	//check indices into right child all make sense
+	assert(c->right_successor[i] > -1);
+	assert(c->right_successor[i] >= c->right_successor[i-1]);
+	assert(c->right_successor[i] <= c->right->size);
+      }
+
+
+  }
+
+}
+
+void cascading_node_leaf_init(cascading_node_t *cn, double *x, double *y, int size){
+  cn->size = size;
+  cn->xs = x;
+  cn->ys = (double*) zmalloc((size+1)*sizeof(double));
+  memcpy(cn->ys, y, size*sizeof(double));
+  cn->ys[size] = DBL_MAX;
+
+  cn->left_successor = NULL;
+  cn->right_successor = NULL;
+  cn->left  = NULL;
+  cn->right  = NULL;
+
+  check_rep_cascading_node(cn);
+  assert(cascading_node_is_leaf(cn));
+}
+
+//inits cascading node cn,  given its two children and the values at a
+//(normal)node 
+void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, cascading_node_t *right){
+  cn->size = left->size + right->size; //has all values of
+						 //left all of right
+						 //and the new values
+
+  //allocates +1 size for sentinel value.
+  cn->ys = (double *)zmalloc((cn->size+1)*sizeof(double));
+  cn->ys[cn->size] = DBL_MAX;
+
+  //does not need any sentinel value, simply the other coordinate
+  cn->xs = (double *)zmalloc(cn->size*sizeof(double));
+
+  //allocate an array of size +1 length, the -1 entry gets inited to 0
+  cn->left_successor = (int *) zmalloc((cn->size+1)*sizeof(int)) + 1;
+  *(cn->left_successor - 1) = -1;
+  cn->right_successor = (int *) zmalloc((cn->size+1)*sizeof(int)) + 1;
+  *(cn->right_successor - 1) = -1;
+
+  cn->left = left;
+  cn->right = right;
+
+  int i, j;
+  for (i = 0, j = 0;  i < left->size || j < right->size; ){
+    if (left->ys[i] < right->ys[j]){ //left has next smallest elt.
+      cn->ys[i+j] = left->ys[i];
+      cn->xs[i+j] = left->xs[i];
+
+      /* cn->left_successor[i+j] = i; */
+
+      /* cn->right_successor[i+j] = cn->right_successor[i+j-1] + 1; */
+      /* //this is wrong. too. */
+
+      i++; 
+    } else { //right has next smallest
+      cn->ys[i+j] = right->ys[j];
+      cn->xs[i+j] = right->xs[j];
+
+      /* cn->left_successor[i+j] = cn->left_successor[i+j-1] + 1; */
+      /* //this may be wrong,  because it keeps increasing the other one,  */
+      /* // but  when it maxes out it shoudl no longer be increased. */
+
+      /* cn->right_successor[i+j] = j; */
+      j++;
+    }
+  }
+
+  for (i = 0; i < cn->size; i++){
+    cn->left_successor[i] = arg_successor_root(cn->ys[i], cn->left);
+    cn->right_successor[i] = arg_successor_root(cn->ys[i], cn->right);
+  }
+
+  //  cascading_node_print(cn);
+  check_rep_cascading_node(cn);
+  assert(!cascading_node_is_leaf(cn));
+}
+
+
+/*
+  Type Defs
+*/
+typedef struct layeredRangeTreePlusKey{
+  double x;
+  double y;
+  void* value;
+} layeredRangeTreePlusKey;
 
 // the inner level of the tree.
 typedef struct layeredRangeTreePlusNodeLevel2 {
@@ -87,225 +278,6 @@ typedef struct layeredRangeTreePlusNodeLevel1 {
   layeredRangeTreePlusNodeLevel2* secondLevelPointer;
 } layeredRangeTreePlusNodeLevel1;
 
-int min(int a, int b){
-  return (a < b)? a : b;
-}
-
-
-/*the value at *end is meant to be a sentinel MAX_INT
- *gives you the succesor position (smallest elt greater than or equal to value)
- */
-double* binary_successor_search(double value, double* start, double* end){
-
-  double *initial_start = start;
-
-  while(start < end){
-    double * middle =  start + (end-start)/2;
-    if ( value < *middle ) {
-      end = middle;
-    } else if ( value > *middle ){
-      start = middle + 1;
-    } else {
-      while(middle >= initial_start && *middle == value  ){
-	middle--;
-      }
-      
-      if (middle != initial_start){
-	return middle + 1;
-      } else {
-	return middle;
-      }
-
-    }
-  }
-
-  return end;
-}
-
-/*
-  binary searches for the index of the successor (greater than or
-  equal) to the value in the node array, 
-  only meant to be used on the root.
-*/
-int arg_successor_root(double yvalue, cascading_node_t *root){
-  return binary_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
-}
-
-/*yindex is an index for on the parent
- */
-int arg_successor_left(int yindex, cascading_node_t *parent){
-  return parent->left_successor[yindex];
-}
-
-int arg_successor_right(int yindex, cascading_node_t *parent){
-  return parent->right_successor[yindex];
-}
-
-
-int cascading_node_is_leaf(cascading_node_t *cn){
-  return cn->left == NULL;
-}
-
-void check_rep_cascading_node(cascading_node_t *c){
-  assert(c->size > 0); 
-
-  //leaf condition all or none should be NULL
-  if (cascading_node_is_leaf(c)){
-    assert(c->left_successor == NULL);
-    assert(c->left == NULL); 
-    assert(c->right_successor == NULL);
-    assert(c->right == NULL); 
-  }
-  // sentinel
-  assert(c->ys[c->size] == DBL_MAX);
-  int i;
-  //no repeated ys, 
-  for (i = 0; i < c->size; i++){
-    assert(c->ys[i] <= c->ys[i+1]);
-    assert(c->ys[i] < DBL_MAX);
-  }
-
-  if (!cascading_node_is_leaf(c)){
-    //sentinels inited to -1
-    assert(*( c->left_successor - 1 ) == -1);
-    assert(*( c->right_successor - 1 ) == -1);
-
-      int max_size_left = 0; int max_size_right = 0;
-      for (i = 0; i < c->size; i++){
-	//check indices into left array all make sense
-	assert( c->left_successor[i] > -1 && c->left_successor[i] >= c->left_successor[i-1]
-		&& c->left_successor[i] <= c->left->size);
-	if (c->left_successor[i] == c->left->size) max_size_left = 1;
-
-	//check indices into right child all make sense
-	assert(c->right_successor[i] > -1);
-	assert(c->right_successor[i] >= c->right_successor[i-1]);
-	assert(c->right_successor[i] <= c->right->size);
-
-	if (c->right_successor[i] == c->right->size) max_size_right = 1;
-      }
-
-      assert(max_size_right ^ max_size_left);
-  }
-
-
-
-
-}
-
-void cascading_node_leaf_init(cascading_node_t *cn, double *x, double *y, int size){
-  cn->size = size;
-  cn->xs = x;
-  cn->ys = (double*) zmalloc((size+1)*sizeof(double));
-  memcpy(cn->ys, y, size*sizeof(double));
-  cn->ys[size] = DBL_MAX;
-
-  cn->left_successor = NULL;
-  cn->right_successor = NULL;
-  cn->left  = NULL;
-  cn->right  = NULL;
-
-  check_rep_cascading_node(cn);
-  assert(cascading_node_is_leaf(cn));
-}
-
-//inits cascading node cn,  given its two children and the values at a
-//(normal)node 
-void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, cascading_node_t *right){
-  cn->size = left->size + right->size; //has all values of
-						 //left all of right
-						 //and the new values
-
-  //allocates +1 size for sentinel value.
-  cn->ys = (double *)zmalloc((cn->size+1)*sizeof(double));
-  cn->ys[cn->size] = DBL_MAX;
-
-  //does not need any sentinel value, simply the other coordinate
-  cn->xs = (double *)zmalloc(cn->size*sizeof(double));
-
-  //allocate an array of size +1 length, the -1 entry gets inited to 0
-  cn->left_successor = (int *)zmalloc((cn->size+1)*sizeof(int)) + 1;
-  *(cn->left_successor - 1) = -1;
-  cn->right_successor = (int *)zmalloc((cn->size+1)*sizeof(int)) + 1;
-  *(cn->right_successor - 1) = -1;
-
-  cn->left = left;
-  cn->right = right;
-
-  
-  
-  
-
-  int i, j;
-  for (i = 0, j = 0;  i < left->size || j < right->size; ){
-    if (left->ys[i] < right->ys[j]){ //left has next smallest elt.
-      cn->ys[i+j] = left->ys[i];
-      cn->xs[i+j] = left->xs[i];
-
-      /* cn->left_successor[i+j] = i; */
-
-      /* cn->right_successor[i+j] = cn->right_successor[i+j-1] + 1; */
-      /* //this is wrong. too. */
-
-      i++; 
-    } else { //right has next smallest
-      cn->ys[i+j] = right->ys[j];
-      cn->xs[i+j] = right->xs[j];
-
-      /* cn->left_successor[i+j] = cn->left_successor[i+j-1] + 1; */
-      /* //this may be wrong,  because it keeps increasing the other one,  */
-      /* // but  when it maxes out it shoudl no longer be increased. */
-
-      /* cn->right_successor[i+j] = j; */
-      j++;
-    }
-  }
-
-  for (i = 0; i < cn->size; i++){
-    cn->left_successor[i] = arg_successor_root(cn->ys[i], cn->left);
-    cn->right_successor[i] = arg_successor_root(cn->ys[i], cn->right);
-  }
-
-  check_rep_cascading_node(cn);
-  assert(!cascading_node_is_leaf(cn));
-}
-
-
-
-/*
- *@a and b are  elements in the two siblings.
- */
-
-void cascading_node_print(cascading_node_t *cn){
-  printf("size: %d\n", cn->size);
-
-  printf("ys:");
-  int i;
-  for (i = 0; i < cn->size; i ++){
-    printf("%1.6f,", cn->ys[i]);
-  }
-  printf("\n");
-
-  printf("xs:");
-  for (i = 0; i < cn->size; i ++){
-    printf("%1.6f,", cn->xs[i]);
-  }
-  printf("\n");
-
-  if (cascading_node_is_leaf(cn)){
-    printf("(leaf ends)\n");
-  } else {
-    printf("left indices:");
-    for (i = 0; i < cn->size; i ++){
-      printf("%d,", cn->left_successor[i]);
-    }
-
-    printf("right indices:");
-    for (i = 0; i < cn->size; i ++){
-      printf("%d,", cn->right_successor[i]);
-    }
-  }
-}
 
 
 

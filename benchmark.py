@@ -20,9 +20,9 @@ implementations =  ["filtered", "kdtree"]
 assert implementation in implementations
 
 #kd tree commands:
-command1 = ["add2d"] #x y
-command2 = ["range2d"] #xmin xmax ymin ymax
-command3 = ["build2d"]
+writeCmd = ["add2d"] #x y
+rangeCmd = ["range2d"] #xmin xmax ymin ymax
+buildCmd = ["build2"]#build2d
 
 #skiplist and filter commands
 writecommand = ["zadd2d", key] #key x y
@@ -46,7 +46,7 @@ for line in insertreader:
         if implementation == FILTERED:
             insert2dcommand = writecommand + [lat, lon, str(counter)]
         elif implementation == KDTREE:
-            insert2dcommand = command1 + [lat, lon]
+            insert2dcommand = writeCmd + [lat, lon]
 
         counter += 1
        # need to add lon for 2D range queries
@@ -63,7 +63,7 @@ print "done with inserts"
 
 if implementation == KDTREE:
     print "building..."
-    client.execute_command(*["build2d"])
+    client.execute_command(*["build2"])
     print "done building..."
 
 print "starting read benchmark"
@@ -79,7 +79,7 @@ for line in benchreader:
         if implementation == FILTERED:
             query = readcommand + [minlat, maxlat, minlon, maxlon]
         elif implementation == KDTREE:
-            query = command2 + [minlat, maxlat, minlon, maxlon]
+            query = rangeCmd + [minlat, maxlat, minlon, maxlon]
 
         answer = client.execute_command(*query)
         print answer
