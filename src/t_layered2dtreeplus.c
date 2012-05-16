@@ -97,11 +97,25 @@ int arg_successor_root(double yvalue, cascading_node_t *root){
 /*yindex is an index for on the parent
  */
 int arg_successor_left(int yindex, cascading_node_t *parent){
-  return parent->left_successor[yindex];
+  if (yindex < parent->size){
+    return parent->left_successor[yindex];
+  } else {
+    return parent->left->size;
+  }
+  /* int y = arg_successor_root(parent->ys[yindex], parent->left); */
+  /* assert(x == y); */
+  /* return y; */
 }
 
 int arg_successor_right(int yindex, cascading_node_t *parent){
-  return parent->right_successor[yindex];
+  if (yindex < parent->size){
+    return parent->right_successor[yindex];
+  } else {
+    return parent->right->size;
+  }
+  /* int y = arg_successor_root(parent->ys[yindex], parent->right); */
+  /* assert(x== y); */
+  /* return y; */
 }
 
 int cascading_node_is_leaf(cascading_node_t *cn){
@@ -575,8 +589,8 @@ void layeredRangeTreePlusRangeSearchLevel1(layeredRangeTreePlusNodeLevel1 *n, do
 
   // call the second level search if we're entirely within the x-range.
   if (n->x1 >= x1 && n->x2 <= x2) {
-    for (;offset < n->secondLevelPointer->cnode.size; offset++ ){
-      printf("Element (%f, %f) in range \n", n->secondLevelPointer->cnode.xs[offset], n->secondLevelPointer->cnode.ys[offset]);
+    for (;offset < n->secondLevelPointer->cnode.size && n->secondLevelPointer->cnode.ys[offset] <= y2; offset++ ){
+            printf("Element (%f, %f) in range \n", n->secondLevelPointer->cnode.xs[offset], n->secondLevelPointer->cnode.ys[offset]);
       (*count)++;
     }
     //layeredRangeTreePlusRangeSearchLevel2(n->secondLevelPointer, -200, 200, y1, y2, count);
