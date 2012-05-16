@@ -80,11 +80,13 @@ int arg_successor_root(double yvalue, cascading_node_t *root){
 /*yindex is an index for on the parent
  */
 int arg_successor_left(int yindex, cascading_node_t *parent){
-  return parent->left_successor[yindex];
+  return arg_successor_root(parent->ys[yindex], parent->left);
+  //  return parent->left_successor[yindex];
 }
 
 int arg_successor_right(int yindex, cascading_node_t *parent){
-  return parent->right_successor[yindex];
+  return arg_successor_root(parent->ys[yindex], parent->right);
+  //  return parent->right_successor[yindex];
 }
 
 int cascading_node_is_leaf(cascading_node_t *cn){
@@ -356,13 +358,50 @@ void test_merge_with_repeats(){
   cascading_node_leaf_init(&an, as, as, 4);
   cascading_node_leaf_init(&bn, bs, bs, 3);
   cascading_node_parent_init(&cn, &an, &bn);
+
+  int expected_size = 4 + 3;
+
+  double expected_ys[] = {0, 0, 1, 1, 1, 2, 2, 3};
+  double expected_xs[] = {0, 0, 1, 1, 1, 2, 2, 3};
+
+  double expected_left[] = {0, 0, 1, 1, 1, 3, 3, 4};
+  double expected_right[] = {0, 0, 1, 1, 1, 2, 2, 3};
+
   //  cascading_node_print(&cn);
+
+  assert(cn.size == expected_size);
+  int i;
+  for (i = 0; i < cn.size; i++){
+    assert(expected_ys[i] == cn.ys[i]);
+    assert(expected_xs[i] == cn.xs[i]);
+    assert(expected_left[i] == cn.left_successor[i]);
+    assert(expected_right[i] == cn.right_successor[i]);
+  }
 }
 
+void test_merge_with_negatives(){
+  cascading_node_t an, bn, cn;
+  double as[] = {-2, -1, 0, 1, 2};
+  double bs[] = {-2, -1.5, 2.5};
+
+  cascading_node_leaf_init(&an, as, as, 5);
+  cascading_node_leaf_init(&bn, bs, bs, 3);
+  
+  assert(arg_successor_root(-3.1, &an) == 0);
+  assert(arg_successor_root(-2.1, &an) == 0);
+  assert(arg_successor_root(-1.9, &an) == 1);
+  assert(arg_successor_root(-0.1, &an) == 2);
+
+  cascading_node_parent_init(&cn, &an, &bn);
+
+  cascading_node_print(&cn);
+
+}
 
 int main(){
   testLinearSuccessorSearch();
-  // testBinarySuccessorSearch();
+  // testBinarySuccessorSearch(); //currently broken
   test1();
   test_merge_with_repeats();
+  test_merge_with_negatives();
 }
