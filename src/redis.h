@@ -1265,6 +1265,12 @@ void layeredRangeTreePlus2DAddCommand(redisClient *c);
 void layeredRangeTreePlus2DBuildTreeCommand(redisClient *c);
 void layeredRangeTreePlus2DRangeSearchCommand(redisClient *c);
 
+// commands for sorted array 
+void sortedArray2DAddCommand(redisClient *c);
+void sortedArray2DBuildCommand(redisClient *c);
+void sortedArray2DStupidSearchCommand(redisClient *c);
+void sortedArray2DSearchCommand(redisClient *c);
+
 
 #if defined(__GNUC__)
 void *calloc(size_t count, size_t size) __attribute__ ((deprecated));
