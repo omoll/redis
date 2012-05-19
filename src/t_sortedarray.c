@@ -16,22 +16,58 @@ typedef struct sortedArrayKey {
   void* value;
 } sortedArrayKey;
 
+double* sorted_array_recursive_successor_search(double value, double* start, double* end){
+  int numElements = ((int)(end - start) / sizeof(double));
+  if (numElements < 16){
+    while( !(*start >= value)){
+      start++;
+    }
+
+    return start;
+  }
+  double* median = start + (numElements/2);
+
+  if (value == *median){
+    return median;
+  }
+ 
+  if (value < *median) {
+    // recurse on left half of the array.
+    double* ret = sorted_array_recursive_successor_search(value, start, median);
+    if (*ret == DBL_MAX) {
+      return median;
+    }
+    return ret;
+  } else {
+    double* ret = sorted_array_recursive_successor_search(value, median, end);
+    return ret;
+  }
+}
 
 //lexical comparison on x,y pairs, imitating the key concatenation thing.
-int compareSortedArrayKey (const void * a, const void * b)
+int compareSortedArrayKeyByX (const void * a, const void * b)
 {
   if  (((sortedArrayKey*)a)->x < ((sortedArrayKey*)b)->x ) return -1;
   else if (((sortedArrayKey*)a)->x > ((sortedArrayKey*)b)->x ) return 1;
-  else if (((sortedArrayKey*)a)->y < ((sortedArrayKey*)b)->y ) return -1;
+  else return 0;
+}
+
+int compareSortedArrayKeyByY (const void * a, const void * b)
+{
+  if (((sortedArrayKey*)a)->y < ((sortedArrayKey*)b)->y ) return -1;
   else if (((sortedArrayKey*)a)->y > ((sortedArrayKey*)b)->y ) return 1;
   else return 0;
 }
 
-
 int resizeAmount = 10000;
 int allElementsCount = 0;
 int currentAllElementsArraySize = 0;
-sortedArrayKey  *allElements = NULL;
+
+sortedArrayKey  *allElementsByX = NULL;
+sortedArrayKey  *allElementsByY = NULL;
+double *allX = NULL;
+double *allY = NULL;
+
 
 void sortedArray2DAddCommand(redisClient *c) {
   double x = strtod(c->argv[1]->ptr, NULL);
@@ -44,16 +80,30 @@ void sortedArray2DAddCommand(redisClient *c) {
 
   if (allElementsCount == currentAllElementsArraySize) {
     currentAllElementsArraySize += resizeAmount;
-    allElements = (sortedArrayKey*) zrealloc((void*)allElements, sizeof(sortedArrayKey)*currentAllElementsArraySize);
+    allElementsByX = (sortedArrayKey*) zrealloc((void*)allElementsByX, sizeof(sortedArrayKey)*currentAllElementsArraySize);
+    allX = (double *) zrealloc((void*)allX, sizeof(double)*currentAllElementsArraySize);
+    allElementsByY = (sortedArrayKey*) zrealloc((void*)allElementsByY, sizeof(sortedArrayKey)*currentAllElementsArraySize);
+    allY = (double *) zrealloc((void*)allY, sizeof(double)*currentAllElementsArraySize);
   }
 
-  allElements[allElementsCount] = key;
+  allElementsByX[allElementsCount] = key;
+  allElementsByY[allElementsCount] = key;
   allElementsCount++;
   addReplyLongLong(c, allElementsCount);
 }
 
+
+int compare(const void * a, const void * b){
+  if (*(double *) a > *(double *) b) return 1;
+  else if (*(double *) a < *(double *) b) return -1;
+  else return 0;
+}
+
 void sortedArray2DBuildCommand(redisClient *c) {
-  qsort(allElements, allElementsCount, sizeof(sortedArrayKey), compareSortedArrayKey);
+  qsort(allElementsByX, allElementsCount, sizeof(sortedArrayKey), compareSortedArrayKeyByX);
+  qsort(allX, allElementsCount, sizeof(sortedArrayKey), compare);
+  qsort(allElementsByY, allElementsCount, sizeof(sortedArrayKey), compareSortedArrayKeyByY);
+  qsort(allY, allElementsCount, sizeof(sortedArrayKey), compare);
   addReplyLongLong(c, 42);
 }
 
@@ -63,19 +113,32 @@ void sortedArray2DStupidSearchCommand(redisClient *c) {
   double y1 = strtod(c->argv[3]->ptr, NULL);
   double y2 = strtod(c->argv[4]->ptr, NULL);
 
-  //this here does a stupid scan
   int count = 0;
   int i = 0;
   for (i = 0; i < allElementsCount; i++){
-    if (allElements[i].x >= x1 && allElements[i].x <= x2 && allElements[i].y >= y1
-	&& allElements[i].y <= y2){
+    if (allElementsByX[i].x >= x1 && allElementsByX[i].x <= x2 && allElementsByX[i].y >= y1
+	&& allElementsByX[i].y <= y2){
       count++;
     }
   }
   addReplyLongLong(c, count);
-
 }
 
 void sortedArray2DSearchCommand(redisClient *c) {
-  sortedArray2DStupidSearchCommand(c);
+  printf("reading\n");
+  double x1 = strtod(c->argv[1]->ptr, NULL);
+  double x2 = strtod(c->argv[2]->ptr, NULL);
+  double y1 = strtod(c->argv[3]->ptr, NULL);
+  double y2 = strtod(c->argv[4]->ptr, NULL);
+
+  double *start = sorted_array_recursive_successor_search(x1, allX, allX + allElementsCount);
+
+  int i = 0; int count = 0;
+  //  printf("outside loop, i=%d\n",(start - allX)/sizeof(double));
+  for (i = (start - allX)/sizeof(double); i < allElementsCount && allElementsByX[i].x <= x2; i++){
+    if (allElementsByX[i].y >= y1 && allElementsByX[i].y <= y2) count++;
+  }
+  addReplyLongLong(c, count);
+  //add binary search on x here see if it still works
+  //then add conditional on x and y.
 }
