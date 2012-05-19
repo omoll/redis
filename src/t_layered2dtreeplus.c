@@ -45,11 +45,38 @@ void cascading_node_print(cascading_node_t *cn);
  */
 
 double* linear_successor_search(double value, double* start, double* end){
-  while( !(*start >= value)){
-    start++;
-  }
+ while( !(*start >= value)){
+   start++;
+ }
+ return start;
+}
 
-  return start;
+double* recursive_successor_search(double value, double* start, double* end){
+  int numElements = ((int)(end - start) / sizeof(double));
+  if (numElements < 16){
+    while( !(*start >= value)){
+      start++;
+    }
+
+    return start;
+  }
+  double* median = start + (numElements/2);
+
+  if (value == *median){
+    return median;
+  }
+ 
+  if (value < *median) {
+    // recurse on left half of the array.
+    double* ret = recursive_successor_search(value, start, median);
+    if (*ret == DBL_MAX) {
+      return median;
+    }
+    return ret;
+  } else {
+    double* ret = recursive_successor_search(value, median, end);
+    return ret;
+  }
 }
 
 /*CURRENTLY BUGGY, CHECK TEST CASES.
@@ -91,7 +118,7 @@ double* binary_successor_search(double value, double* start, double* end){
 */
 int arg_successor_root(double yvalue, cascading_node_t *root){
   //TODO:when debugged binary search and place here.
-  return linear_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
+  return recursive_successor_search(yvalue, root->ys, root->ys + root->size) - root->ys;
 }
 
 /*yindex is an index for on the parent
@@ -590,7 +617,7 @@ void layeredRangeTreePlusRangeSearchLevel1(layeredRangeTreePlusNodeLevel1 *n, do
   // call the second level search if we're entirely within the x-range.
   if (n->x1 >= x1 && n->x2 <= x2) {
     for (;offset < n->secondLevelPointer->cnode.size && n->secondLevelPointer->cnode.ys[offset] <= y2; offset++ ){
-            printf("Element (%f, %f) in range \n", n->secondLevelPointer->cnode.xs[offset], n->secondLevelPointer->cnode.ys[offset]);
+            //printf("Element (%f, %f) in range \n", n->secondLevelPointer->cnode.xs[offset], n->secondLevelPointer->cnode.ys[offset]);
       (*count)++;
     }
     //layeredRangeTreePlusRangeSearchLevel2(n->secondLevelPointer, -200, 200, y1, y2, count);
