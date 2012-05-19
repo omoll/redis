@@ -4,29 +4,70 @@ from sys import argv
 import csv
 
 
-if len(argv) == 1:
-    print "usage: ", argv[0], "datafile", "queryfile", "key", "port", "mode"
+implementations =  ["kdtree", "layered", "cascading", "array"]
+(KDTREE, LAYERED, CASCADING, ARRAY) = implementations
+
+
+if len(argv) < 5:
+    print "usage: ", argv[0], "datafile", "queryfile", "port", "implementation"
+    print "implementation can be any of: ", implementations
     sys.exit(1)
 
 datafile = argv[1]
 benchmarkfile = argv[2]
+#key = argv[3] no longer needed
+portnum = int(argv[3])
+implementation = argv[4]
 
-key = argv[3]
-portnum = int(argv[4])
-implementation = argv[5]
-
-implementations =  ["filtered", "kdtree"]
-(FILTERED, KDTREE) = implementations
 assert implementation in implementations
 
-#kd tree commands:
-writeCmd = ["add2d"] #x y
-rangeCmd = ["range2d"] #xmin xmax ymin ymax
-buildCmd = ["build2"]#build2d
+# FILTERED: 
+# {
+# 'add':'zadd2d',
+# 'build':'zcard',
+# 'range': 'zrangebyscore'
+# }, 
 
-#skiplist and filter commands
-writecommand = ["zadd2d", key] #key x y
-readcommand = ["zrangebyscore", key] #key xmin xmax ymin ymax
+
+#zset commands:
+commands = {
+
+#kd tree commands:
+KDTREE: 
+{'add':'add2dx',
+ 'build':'build2dx',
+ 'range':'range2dx'
+},
+
+LAYERED: 
+{
+'add':'add2dlayered',
+'build':'build2dlayered',
+'range':'range2dlayered'
+},
+
+CASCADING: 
+{
+'add':'add2dplus',
+'build':'build2dplus',
+'range':'range2dplus'
+},
+ARRAY: 
+{
+'add':'add2darray',
+'build':'build2darray',
+'range':'range2dstupid'
+}
+}
+# #after implementing, may want 'range2darray'
+
+# writeCmd = ["add2d"] #x y
+# rangeCmd = ["range2d"] #xmin xmax ymin ymax
+# buildCmd = ["build2"]#build2d
+
+# #skiplist and filter commands
+# writecommand = ["zadd2d", key] #key x y
+# readcommand = ["zrangebyscore", key] #key xmin xmax ymin ymax
 
 client = redis.StrictRedis(host='localhost', port=portnum, db=0)
 
@@ -41,33 +82,22 @@ counter = 0
 for line in insertreader:
     (timestamp, lat, lon) = line
     try:
-        # redis syntax: zadd key score member. it seems it won't accept repeated member values.
-
-        if implementation == FILTERED:
-            insert2dcommand = writecommand + [lat, lon, str(counter)]
-        elif implementation == KDTREE:
-            insert2dcommand = writeCmd + [lat, lon]
-
+        insert2dcommand = [commands[implementation]['add']] + [lat, lon, str(counter)]
         counter += 1
-       # need to add lon for 2D range queries
         if counter == 1:
             print "first command:", " ".join(insert2dcommand)
-            
         client.execute_command(*insert2dcommand)
 
     except Exception as e:
-        print "Exception. insert command", " ".join(insert2dCommand), "failed:", e
+        print "Exception. insert command", " ".join(insert2dcommand), "failed:", e
         sys.exit(1)
 
 print "done with inserts"
-
-if implementation == KDTREE:
-    print "building..."
-    client.execute_command(*["build2"])
-    print "done building..."
+print "building..."
+client.execute_command(*[commands[implementation]['build']])
+print "done building..."
 
 print "starting read benchmark"
-
 benchreader = csv.reader(open(benchmarkfile, 'r'),  delimiter='|')
 
 numquery = 0
@@ -76,11 +106,7 @@ for line in benchreader:
     (minlon, maxlon) = line[2].split(",")
     try:
 
-        if implementation == FILTERED:
-            query = readcommand + [minlat, maxlat, minlon, maxlon]
-        elif implementation == KDTREE:
-            query = rangeCmd + [minlat, maxlat, minlon, maxlon]
-
+        query = [commands[implementation]['range']] + [minlat, maxlat, minlon, maxlon]
         answer = client.execute_command(*query)
         print answer
         numquery += 1
