@@ -37,7 +37,6 @@ void sortedArray2DAddCommand(redisClient *c) {
   double x = strtod(c->argv[1]->ptr, NULL);
   double y = strtod(c->argv[2]->ptr, NULL);
 
-
   sortedArrayKey key;
   key.x = x;
   key.y = y;
@@ -54,8 +53,7 @@ void sortedArray2DAddCommand(redisClient *c) {
 }
 
 void sortedArray2DBuildCommand(redisClient *c) {
-  qsort(allElements, currentAllElementsArraySize, sizeof(sortedArrayKey), compareSortedArrayKey);
-
+  qsort(allElements, allElementsCount, sizeof(sortedArrayKey), compareSortedArrayKey);
   addReplyLongLong(c, 42);
 }
 
@@ -74,7 +72,6 @@ void sortedArray2DStupidSearchCommand(redisClient *c) {
       count++;
     }
   }
-
   addReplyLongLong(c, count);
 
 }
