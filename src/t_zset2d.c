@@ -55,6 +55,15 @@ typedef struct quadTreeNode{
   int split;
   struct quadTreeNode** children; // NULL if leaf
 } quadTreeNode;
+// the root node
+quadTreeNode* tfkrangeTreeRoot;
+
+// collection of elements
+quadTreeKey* tfkallElements;
+int tfkallElementsCount;
+int tfkcurrentAllElementsArraySize;
+double tfktotalQueryTime;
+
 
 
 // For debugging purposes.
@@ -486,15 +495,6 @@ void quadTreeRangeSearch(quadTreeNode *n, double x1, double x2, double y1, doubl
 }
 
 
-// the root node
-quadTreeNode* rangeTreeRoot;
-
-// collection of elements
-quadTreeKey* allElements;
-int allElementsCount;
-int currentAllElementsArraySize;
-double totalQueryTime;
-
 void tfk2DRangeSearchCommand(redisClient* c) {
   double x1 = strtod(c->argv[1]->ptr, NULL);
   double x2 = strtod(c->argv[2]->ptr, NULL);
@@ -502,37 +502,37 @@ void tfk2DRangeSearchCommand(redisClient* c) {
   double y2 = strtod(c->argv[4]->ptr, NULL);
   int count = 0;
   double start_time = tfk_get_time();
-  quadTreeRangeSearch(rangeTreeRoot, x1, x2, y1, y2, &count);
+  quadTreeRangeSearch(tfkrangeTreeRoot, x1, x2, y1, y2, &count);
   double end_time = tfk_get_time();
 /*
-  for (int i = 0; i < allElementsCount; i++) {
-    if (quadTreeKeyInRange(allElements[i], x1, x2, y1, y2)) {
+  for (int i = 0; i < tfkallElementsCount; i++) {
+    if (quadTreeKeyInRange(tfkallElements[i], x1, x2, y1, y2)) {
       count++;
     }
   }
 */
-  totalQueryTime += end_time - start_time;
-  printf("total query time %f rangeTreeCount: %d \n", totalQueryTime, count); 
+  tfktotalQueryTime += end_time - start_time;
+  printf("total query time %f rangeTreeCount: %d \n", tfktotalQueryTime, count); 
   addReplyLongLong(c, count);
 }
 
 void tfkBuildTreeCommand(redisClient *c) {
-  if (rangeTreeRoot != NULL){
+  if (tfkrangeTreeRoot != NULL){
     // delete the old quad tree.
-    quadTreeDeleteNode(rangeTreeRoot);
+    quadTreeDeleteNode(tfkrangeTreeRoot);
   }
-  rangeTreeRoot = (quadTreeNode*) zmalloc(sizeof(quadTreeNode));
+  tfkrangeTreeRoot = (quadTreeNode*) zmalloc(sizeof(quadTreeNode));
 
-  rangeTreeRoot->x1 = -200;
-  rangeTreeRoot->x2 = 200;
-  rangeTreeRoot->y1 = -200;
-  rangeTreeRoot->y2 = 200; 
-  rangeTreeRoot->children = NULL;
+  tfkrangeTreeRoot->x1 = -200;
+  tfkrangeTreeRoot->x2 = 200;
+  tfkrangeTreeRoot->y1 = -200;
+  tfkrangeTreeRoot->y2 = 200; 
+  tfkrangeTreeRoot->children = NULL;
 
-  // rebuild using the allElements array.
-  buildQuadTreeNode(rangeTreeRoot, allElements, allElementsCount, 1);
-  walkQuadTree(rangeTreeRoot);
-
+  // rebuild using the tfkallElements array.
+  buildQuadTreeNode(tfkrangeTreeRoot, tfkallElements, tfkallElementsCount, 1);
+  walkQuadTree(tfkrangeTreeRoot);
+  tfktotalQueryTime = 0;
   addReplyLongLong(c, 42);
 }
 
@@ -548,14 +548,14 @@ void tfkAddGenericCommand(redisClient *c, int incr) {
     key.x = x;
     key.y = y;
     key.value = NULL; 
-    if (allElementsCount == currentAllElementsArraySize) {
-      // resize allElementsArray
-      currentAllElementsArraySize += resizeAmount;
-      allElements = (quadTreeKey*) zrealloc((void*)allElements, sizeof(quadTreeKey) * currentAllElementsArraySize);
+    if (tfkallElementsCount == tfkcurrentAllElementsArraySize) {
+      // resize tfkallElementsArray
+      tfkcurrentAllElementsArraySize += resizeAmount;
+      tfkallElements = (quadTreeKey*) zrealloc((void*)tfkallElements, sizeof(quadTreeKey) * tfkcurrentAllElementsArraySize);
     }
-    allElements[allElementsCount] = key;
-    allElementsCount++;
-    addReplyLongLong(c, allElementsCount);
+    tfkallElements[tfkallElementsCount] = key;
+    tfkallElementsCount++;
+    addReplyLongLong(c, tfkallElementsCount);
     /*
     if (a == NULL){ 
     a = (quadTreeNode*) zmalloc(sizeof(quadTreeNode));

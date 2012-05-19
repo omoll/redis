@@ -360,10 +360,10 @@ void layeredRangeTreeRangeSearchLevel1(layeredRangeTreeNodeLevel1 *n, double x1,
 layeredRangeTreeNodeLevel1* rangeTreeRoot;
 
 // collection of elements
-layeredRangeTreeKey* allElements;
-int allElementsCount;
-int currentAllElementsArraySize;
-double totalQueryTime;
+layeredRangeTreeKey* rt_allElements;
+int rt_allElementsCount;
+int rt_currentAllElementsArraySize;
+double rt_totalQueryTime;
 
 void tfkLayeredRangeTree2DRangeSearchCommand(redisClient* c) {
   double x1 = strtod(c->argv[1]->ptr, NULL);
@@ -374,8 +374,8 @@ void tfkLayeredRangeTree2DRangeSearchCommand(redisClient* c) {
   double start_time = tfkLayeredRangeTree_get_time();
   layeredRangeTreeRangeSearchLevel1(rangeTreeRoot, x1, x2, y1, y2, &count);
   double end_time = tfkLayeredRangeTree_get_time();
-  totalQueryTime += end_time - start_time;
-  printf("total query time %f rangeTreeCount: %d \n", totalQueryTime, count); 
+  rt_totalQueryTime += end_time - start_time;
+  printf("total query time %f rangeTreeCount: %d \n", rt_totalQueryTime, count); 
   addReplyLongLong(c, count);
 }
 
@@ -391,16 +391,16 @@ void tfkLayeredRangeTreeBuildTreeCommand(redisClient *c) {
   rangeTreeRoot->y1 = -200;
   rangeTreeRoot->y2 = 200; 
   rangeTreeRoot->children = NULL;
-  rangeTreeRoot->elementCount = allElementsCount;
+  rangeTreeRoot->elementCount = rt_allElementsCount;
   rangeTreeRoot->secondLevelPointer = NULL;
-  // rebuild using the allElements array.
+  // rebuild using the rt_allElements array.
 
   // build the first level of the tree.
-  buildLayeredRangeTreeNodeLevel1(rangeTreeRoot, allElements, allElementsCount);
+  buildLayeredRangeTreeNodeLevel1(rangeTreeRoot, rt_allElements, rt_allElementsCount);
 
   // build the second level of the tree.
   layeredRangeTreeKey* elementsCopy = (layeredRangeTreeKey*) zmalloc(sizeof(layeredRangeTreeKey) * rangeTreeRoot->elementCount);
-  explodeTree(rangeTreeRoot, elementsCopy, allElementsCount);
+  explodeTree(rangeTreeRoot, elementsCopy, rt_allElementsCount);
   zfree(elementsCopy); 
   
   //walkLayeredRangeTree(rangeTreeRoot);
@@ -420,14 +420,14 @@ void tfkLayeredRangeTreeAddGenericCommand(redisClient *c, int incr) {
     key.x = x;
     key.y = y;
     key.value = NULL; 
-    if (allElementsCount == currentAllElementsArraySize) {
-      // resize allElementsArray
-      currentAllElementsArraySize += resizeAmount;
-      allElements = (layeredRangeTreeKey*) zrealloc((void*)allElements, sizeof(layeredRangeTreeKey) * currentAllElementsArraySize);
+    if (rt_allElementsCount == rt_currentAllElementsArraySize) {
+      // resize rt_allElementsArray
+      rt_currentAllElementsArraySize += resizeAmount;
+      rt_allElements = (layeredRangeTreeKey*) zrealloc((void*)rt_allElements, sizeof(layeredRangeTreeKey) * rt_currentAllElementsArraySize);
     }
-    allElements[allElementsCount] = key;
-    allElementsCount++;
-    addReplyLongLong(c, allElementsCount);
+    rt_allElements[rt_allElementsCount] = key;
+    rt_allElementsCount++;
+    addReplyLongLong(c, rt_allElementsCount);
 }
 
 void layeredRangeTree2DAddCommand(redisClient *c) {

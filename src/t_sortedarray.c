@@ -9,7 +9,14 @@
 #include <assert.h>
 #include <float.h>
 
-
+double tfkSortedArray_get_time()
+{
+    struct timeval t;
+    struct timezone tzp;
+    gettimeofday(&t, &tzp);
+    return t.tv_sec + t.tv_usec*1e-6;
+}
+double sortedArray_totalQueryTime;
 typedef struct sortedArrayKey {
   double x;
   double y;
@@ -63,6 +70,7 @@ void sortedArray2DStupidSearchCommand(redisClient *c) {
   double y1 = strtod(c->argv[3]->ptr, NULL);
   double y2 = strtod(c->argv[4]->ptr, NULL);
 
+  double start = tfkSortedArray_get_time(); 
   //this here does a stupid scan
   int count = 0;
   int i = 0;
@@ -72,6 +80,10 @@ void sortedArray2DStupidSearchCommand(redisClient *c) {
       count++;
     }
   }
+  double end = tfkSortedArray_get_time();
+ 
+  sortedArray_totalQueryTime += end - start;
+  printf("Total query time %f \n",sortedArray_totalQueryTime);
   addReplyLongLong(c, count);
 
 }

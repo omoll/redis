@@ -4,9 +4,8 @@ from sys import argv
 import csv
 
 
-implementations =  ["kdtree", "layered", "cascading", "array"]
-(KDTREE, LAYERED, CASCADING, ARRAY) = implementations
-
+implementations =  ["kdtree", "layered", "cascading", "cascading4", "array"]
+(KDTREE, LAYERED, CASCADING, CASCADING4, ARRAY) = implementations
 
 if len(argv) < 5:
     print "usage: ", argv[0], "datafile", "queryfile", "port", "implementation"
@@ -51,6 +50,12 @@ CASCADING:
 'add':'add2dplus',
 'build':'build2dplus',
 'range':'range2dplus'
+},
+CASCADING4: 
+{
+'add':'add2dplus4',
+'build':'build2dplus4',
+'range':'range2dplus4'
 },
 ARRAY: 
 {

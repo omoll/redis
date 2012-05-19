@@ -259,6 +259,10 @@ struct redisCommand redisCommandTable[] = {
     {"build2dplus", layeredRangeTreePlus2DBuildTreeCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
     {"range2dplus", layeredRangeTreePlus2DRangeSearchCommand, 5,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
 
+    {"add2dplus4", layeredRangeTreePlus42DAddCommand,-3,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"build2dplus4", layeredRangeTreePlus42DBuildTreeCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+    {"range2dplus4", layeredRangeTreePlus42DRangeSearchCommand, 5,"wm",0,NULL,1,1,1,0,0}, //ADDED(tfk)
+
     {"add2darray", sortedArray2DAddCommand,-3,"wm",0,NULL,1,1,1,0,0}, //ADDED(orm)
     {"build2darray", sortedArray2DBuildCommand,0,"wm",0,NULL,1,1,1,0,0}, //ADDED(orm)
     {"range2dstupid", sortedArray2DStupidSearchCommand, 5,"wm",0,NULL,1,1,1,0,0}, //ADDED(orm)

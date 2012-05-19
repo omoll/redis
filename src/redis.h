@@ -1265,6 +1265,9 @@ void layeredRangeTreePlus2DAddCommand(redisClient *c);
 void layeredRangeTreePlus2DBuildTreeCommand(redisClient *c);
 void layeredRangeTreePlus2DRangeSearchCommand(redisClient *c);
 
+void layeredRangeTreePlus42DAddCommand(redisClient *c);
+void layeredRangeTreePlus42DBuildTreeCommand(redisClient *c);
+void layeredRangeTreePlus42DRangeSearchCommand(redisClient *c);
 // commands for sorted array 
 void sortedArray2DAddCommand(redisClient *c);
 void sortedArray2DBuildCommand(redisClient *c);

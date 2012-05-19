@@ -10,7 +10,7 @@
 // Each leaf in the tree contains this many elements.
 // This must be greater than 2, otherwise splitting range
 // using the median may result in infinite recursion.
-static int QUAD_TREE_NODE_SIZE = 3;
+static int QUAD_TREE_NODE_SIZE = 16;
 
 double tfkLayeredRangeTreePlus_get_time()
 {
@@ -19,9 +19,6 @@ double tfkLayeredRangeTreePlus_get_time()
     gettimeofday(&t, &tzp);
     return t.tv_sec + t.tv_usec*1e-6;
 }
-
-
-
 
 int min(int a, int b){
   return (a < b)? a : b;
@@ -34,8 +31,14 @@ typedef struct cascading_node {
   int *left_successor; //positions for cascading left (you keep track
   int *right_successor; // positions for cascading right
 
+  int *left2_successor;
+  int *right2_successor;
+
   struct cascading_node *left;
+  struct cascading_node *left2;
   struct cascading_node *right;
+  struct cascading_node *right2;
+
 } cascading_node_t;
 
 void cascading_node_print(cascading_node_t *cn);
@@ -134,11 +137,35 @@ int arg_successor_left(int yindex, cascading_node_t *parent){
   /* return y; */
 }
 
+/*yindex is an index for on the parent
+ */
+int arg_successor_left2(int yindex, cascading_node_t *parent){
+  if (yindex < parent->size){
+    return parent->left2_successor[yindex];
+  } else {
+    return parent->left2->size;
+  }
+  /* int y = arg_successor_root(parent->ys[yindex], parent->left); */
+  /* assert(x == y); */
+  /* return y; */
+}
+
 int arg_successor_right(int yindex, cascading_node_t *parent){
   if (yindex < parent->size){
     return parent->right_successor[yindex];
   } else {
     return parent->right->size;
+  }
+  /* int y = arg_successor_root(parent->ys[yindex], parent->right); */
+  /* assert(x== y); */
+  /* return y; */
+}
+
+int arg_successor_right2(int yindex, cascading_node_t *parent){
+  if (yindex < parent->size){
+    return parent->right2_successor[yindex];
+  } else {
+    return parent->right2->size;
   }
   /* int y = arg_successor_root(parent->ys[yindex], parent->right); */
   /* assert(x== y); */
@@ -197,9 +224,14 @@ void cascading_node_leaf_init(cascading_node_t *cn, double *x, double *y, int si
   cn->ys[size] = DBL_MAX;
 
   cn->left_successor = NULL;
+  cn->left2_successor = NULL;
   cn->right_successor = NULL;
+  cn->right2_successor = NULL;
+
   cn->left  = NULL;
+  cn->left2 = NULL;
   cn->right  = NULL;
+  cn->right2 = NULL;
 
   check_rep_cascading_node(cn);
   assert(cascading_node_is_leaf(cn));
@@ -207,8 +239,9 @@ void cascading_node_leaf_init(cascading_node_t *cn, double *x, double *y, int si
 
 //inits cascading node cn,  given its two children and the values at a
 //(normal)node 
-void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, cascading_node_t *right){
-  cn->size = left->size + right->size; //has all values of
+void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, cascading_node_t* left2,
+    cascading_node_t *right, cascading_node_t* right2){
+  cn->size = left->size + left2->size + right->size + right2->size; //has all values of
 						 //left all of right
 						 //and the new values
 
@@ -222,47 +255,70 @@ void cascading_node_parent_init(cascading_node_t *cn, cascading_node_t *left, ca
   //allocate an array of size +1 length, the -1 entry gets inited to 0
   cn->left_successor = (int *) zmalloc((cn->size+1)*sizeof(int)) + 1;
   *(cn->left_successor - 1) = -1;
+  cn->left2_successor = (int *) zmalloc((cn->size+1)*sizeof(int)) + 1;
+  *(cn->left2_successor - 1) = -1;
+
   cn->right_successor = (int *) zmalloc((cn->size+1)*sizeof(int)) + 1;
   *(cn->right_successor - 1) = -1;
+  cn->right2_successor = (int *) zmalloc((cn->size+1)*sizeof(int)) + 1;
+  *(cn->right2_successor - 1) = -1;
 
   cn->left = left;
+  cn->left2 = left2;
   cn->right = right;
+  cn->right2 = right2;
 
-  int i, j;
-  for (i = 0, j = 0;  i < left->size || j < right->size; ){
-    if (left->ys[i] < right->ys[j]){ //left has next smallest elt.
-      cn->ys[i+j] = left->ys[i];
-      cn->xs[i+j] = left->xs[i];
+  int i, i2, j, j2;
+  for (i = 0, i2 = 0, j = 0, j2 = 0;  i < left->size || i2 < left2->size || j < right->size || j2 < right2->size;){
+    double* minchild = left->ys; 
+    double min_value = left->ys[i];
+    
+    if (min_value > left2->ys[i2]) {
+      min_value = left2->ys[i2];
+      minchild = left2->ys;
+    }
+    if (min_value > right->ys[j]){
+      min_value = right->ys[j];
+      minchild = right->ys;
+    }
+    if (min_value > right2->ys[j2]){
+      min_value = right2->ys[j2];
+      minchild = right2->ys;
+    }
 
-      /* cn->left_successor[i+j] = i; */
-
-      /* cn->right_successor[i+j] = cn->right_successor[i+j-1] + 1; */
-      /* //this is wrong. too. */
-
-      i++; 
-    } else { //right has next smallest
-      cn->ys[i+j] = right->ys[j];
-      cn->xs[i+j] = right->xs[j];
-
-      /* cn->left_successor[i+j] = cn->left_successor[i+j-1] + 1; */
-      /* //this may be wrong,  because it keeps increasing the other one,  */
-      /* // but  when it maxes out it shoudl no longer be increased. */
-
-      /* cn->right_successor[i+j] = j; */
+    if (minchild == left->ys){
+      // left has the next smallest element
+      cn->ys[i+i2+j+j2] = left->ys[i];
+      cn->xs[i+i2+j+j2] = left->xs[i];
+      i++;
+    }
+    if (minchild == left2->ys) {
+      cn->ys[i+i2+j+j2] = left2->ys[i2];
+      cn->xs[i+i2+j+j2] = left2->xs[i2];
+      i2++;
+    }
+    if (minchild == right->ys){
+      cn->ys[i+i2+j+j2] = right->ys[j];
+      cn->xs[i+i2+j+j2] = right->xs[j];
       j++;
     }
+    if (minchild == right2->ys){
+      cn->ys[i+i2+j+j2] = right2->ys[j2];
+      cn->xs[i+i2+j+j2] = right2->xs[j2];
+      j2++;
+    }
   }
-
   for (i = 0; i < cn->size; i++){
     cn->left_successor[i] = arg_successor_root(cn->ys[i], cn->left);
+    cn->left2_successor[i] = arg_successor_root(cn->ys[i], cn->left2);
     cn->right_successor[i] = arg_successor_root(cn->ys[i], cn->right);
+    cn->right2_successor[i] = arg_successor_root(cn->ys[i], cn->right2);
   }
 
   //  cascading_node_print(cn);
   check_rep_cascading_node(cn);
   assert(!cascading_node_is_leaf(cn));
 }
-
 
 /*
   Type Defs
@@ -330,6 +386,8 @@ void layeredRangeTreePlusDeleteNodeLevel2(layeredRangeTreePlusNodeLevel2* n) {
   } else {
     layeredRangeTreePlusDeleteNodeLevel2(n->children[0]);
     layeredRangeTreePlusDeleteNodeLevel2(n->children[1]);
+    layeredRangeTreePlusDeleteNodeLevel2(n->children[2]);
+    layeredRangeTreePlusDeleteNodeLevel2(n->children[3]);
     zfree(n->children);
     zfree(n);
   }
@@ -343,6 +401,9 @@ void layeredRangeTreePlusDeleteNodeLevel1(layeredRangeTreePlusNodeLevel1* n){
   } else {
     layeredRangeTreePlusDeleteNodeLevel1(n->children[0]);
     layeredRangeTreePlusDeleteNodeLevel1(n->children[1]);
+    layeredRangeTreePlusDeleteNodeLevel1(n->children[2]);
+    layeredRangeTreePlusDeleteNodeLevel1(n->children[3]);
+
     zfree(n->children);
     zfree(n);
   }
@@ -389,37 +450,66 @@ void buildLayeredRangeTreePlusNodeLevel2 (layeredRangeTreePlusNodeLevel2* n, lay
     return;
   }
  
-  n->children = (layeredRangeTreePlusNodeLevel2**) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2*)*2);
+  n->children = (layeredRangeTreePlusNodeLevel2**) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2*)*4);
 
   qsort(elements, n->elementCount,
       sizeof(layeredRangeTreePlusKey), layeredRangeTreePlusElementCompareY);
-  layeredRangeTreePlusKey medianY = elements[n->elementCount / 2];
+
+  layeredRangeTreePlusKey medianY1 = elements[n->elementCount / 4];
+  layeredRangeTreePlusKey medianY2 = elements[n->elementCount / 2];
+  layeredRangeTreePlusKey medianY3 = elements[(3*n->elementCount) / 4];
 
   n->children[0] = (layeredRangeTreePlusNodeLevel2*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
   n->children[1] = (layeredRangeTreePlusNodeLevel2*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
+  n->children[2] = (layeredRangeTreePlusNodeLevel2*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
+  n->children[3] = (layeredRangeTreePlusNodeLevel2*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
 
-  n->children[0]->elementCount = n->elementCount / 2 + n->elementCount % 2;
-  n->children[1]->elementCount = n->elementCount - n->children[0]->elementCount; 
+  n->children[0]->elementCount = n->elementCount / 4 + (n->elementCount%4!=0);
+  n->children[1]->elementCount = n->elementCount / 2 + (n->elementCount%2!=0) - n->children[0]->elementCount;
+  n->children[2]->elementCount = (3*n->elementCount) / 4 + (3*n->elementCount)%4!=0
+      - n->children[0]->elementCount - n->children[1]->elementCount;
+  n->children[3]->elementCount = n->elementCount
+      - n->children[0]->elementCount - n->children[1]->elementCount - n->children[2]->elementCount;
+
 
   n->children[0]->children = NULL;
   n->children[1]->children = NULL;
+  n->children[2]->children = NULL;
+  n->children[3]->children = NULL;
 
   n->children[0]->x1 = n->x1;
   n->children[0]->x2 = n->x2;
   n->children[0]->y1 = n->y1;
-  n->children[0]->y2 = medianY.y;
+  n->children[0]->y2 = medianY1.y;
   n->children[0]->start = 0;
   n->children[0]->end = 0;
 
   n->children[1]->x1 = n->x1;
   n->children[1]->x2 = n->x2;
-  n->children[1]->y1 = medianY.y;
-  n->children[1]->y2 = n->y2;
+  n->children[1]->y1 = medianY1.y;
+  n->children[1]->y2 = medianY2.y;
   n->children[1]->start = 0;
   n->children[1]->end = 0;
 
+  n->children[2]->x1 = n->x1;
+  n->children[2]->x2 = n->x2;
+  n->children[2]->y1 = medianY2.y;
+  n->children[2]->y2 = medianY3.y;
+  n->children[2]->start = 0;
+  n->children[2]->end = 0;
+
+  n->children[3]->x1 = n->x1;
+  n->children[3]->x2 = n->x2;
+  n->children[3]->y1 = medianY3.y;
+  n->children[3]->y2 = n->y2;
+  n->children[3]->start = 0;
+  n->children[3]->end = 0;
+
   buildLayeredRangeTreePlusNodeLevel2(n->children[0], elements, n->children[0]->elementCount);
   buildLayeredRangeTreePlusNodeLevel2(n->children[1], elements + n->children[0]->elementCount, n->children[1]->elementCount); 
+  buildLayeredRangeTreePlusNodeLevel2(n->children[2], elements + n->children[0]->elementCount + n->children[1]->elementCount, n->children[1]->elementCount); 
+  buildLayeredRangeTreePlusNodeLevel2(n->children[3],
+      elements + n->children[0]->elementCount + n->children[1]->elementCount + n->children[2]->elementCount, n->children[2]->elementCount); 
 }
 
 // builds a second level of the quad tree.
@@ -452,10 +542,16 @@ void explodeTreePlus(layeredRangeTreePlusNodeLevel1* n, layeredRangeTreePlusKey*
  
   explodeTreePlus(n->children[0], elements, n->children[0]->elementCount); 
   explodeTreePlus(n->children[1], elements + n->children[0]->elementCount, n->children[1]->elementCount);
+  explodeTreePlus(n->children[2],
+      elements + n->children[0]->elementCount + n->children[1]->elementCount, n->children[2]->elementCount);
+  explodeTreePlus(n->children[3],
+      elements + n->children[0]->elementCount + n->children[1]->elementCount + n->children[2]->elementCount, n->children[3]->elementCount);
+
 
   n->secondLevelPointer = (layeredRangeTreePlusNodeLevel2*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
 
-  cascading_node_parent_init(&n->secondLevelPointer->cnode, &n->children[0]->secondLevelPointer->cnode, &n->children[1]->secondLevelPointer->cnode);
+  cascading_node_parent_init(&n->secondLevelPointer->cnode, &n->children[0]->secondLevelPointer->cnode, &n->children[1]->secondLevelPointer->cnode,
+      &n->children[2]->secondLevelPointer->cnode, &n->children[3]->secondLevelPointer->cnode);
 
   n->secondLevelPointer->x1 = n->x1;
   n->secondLevelPointer->x2 = n->x2;
@@ -486,38 +582,81 @@ void buildLayeredRangeTreePlusNodeLevel1(layeredRangeTreePlusNodeLevel1* n, laye
     return;
   }
  
-  n->children = (layeredRangeTreePlusNodeLevel1**) zmalloc(sizeof(layeredRangeTreePlusNodeLevel1*)*2);
+  n->children = (layeredRangeTreePlusNodeLevel1**) zmalloc(sizeof(layeredRangeTreePlusNodeLevel1*)*4);
 
   qsort(elements, n->elementCount,
       sizeof(layeredRangeTreePlusKey), layeredRangeTreePlusElementCompareX);
 
-  layeredRangeTreePlusKey medianX = elements[n->elementCount / 2];
+  layeredRangeTreePlusKey medianX1 = elements[n->elementCount / 4];
+  layeredRangeTreePlusKey medianX2 = elements[n->elementCount / 2];
+  layeredRangeTreePlusKey medianX3 = elements[(3*n->elementCount) / 4];
 
-  n->children[0] = (layeredRangeTreePlusNodeLevel1*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel1));
-  n->children[1] = (layeredRangeTreePlusNodeLevel1*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel1));
-
-  n->children[0]->elementCount = n->elementCount / 2 + n->elementCount % 2;
-  n->children[1]->elementCount = n->elementCount - n->children[0]->elementCount; 
+  n->children[0] = (layeredRangeTreePlusNodeLevel1*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
+  n->children[1] = (layeredRangeTreePlusNodeLevel1*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
+  n->children[2] = (layeredRangeTreePlusNodeLevel1*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
+  n->children[3] = (layeredRangeTreePlusNodeLevel1*) zmalloc(sizeof(layeredRangeTreePlusNodeLevel2));
+/*
+  n->children[0]->elementCount = n->elementCount / 4 + (n->elementCount%4!=0);
+  n->children[1]->elementCount = n->elementCount / 2 + (n->elementCount%2!=0) - n->children[0]->elementCount;
+  n->children[2]->elementCount = (3*n->elementCount) / 4 + (3*n->elementCount)%4!=0
+      - n->children[0]->elementCount - n->children[1]->elementCount;
+  n->children[3]->elementCount = n->elementCount
+      - n->children[0]->elementCount - n->children[1]->elementCount - n->children[2]->elementCount;
+*/
+  int j = 1;
+  for (int i = 0; i < n->elementCount; i++) {  
+    if (i == n->elementCount/4){
+      n->children[0]->elementCount = i;
+    }
+    if (i == n->elementCount/2) {
+      n->children[1]->elementCount = i - n->children[0]->elementCount;
+    }
+    if (i == (3*n->elementCount)/4) {
+      n->children[2]->elementCount = i - n->children[0]->elementCount - n->children[1]->elementCount;
+    }
+    j++;
+  }
+  n->children[3]->elementCount = n->elementCount - n->children[2]->elementCount - n->children[1]->elementCount - n->children[0]->elementCount;
 
   n->children[0]->children = NULL;
   n->children[1]->children = NULL;
-  
+  n->children[2]->children = NULL;
+  n->children[3]->children = NULL;
+
   n->children[0]->x1 = n->x1;
-  n->children[0]->x2 = medianX.x;
+  n->children[0]->x2 = medianX1.x;
   n->children[0]->y1 = n->y1;
   n->children[0]->y2 = n->y2;
   n->children[0]->start = 0;
   n->children[0]->end = 0;
 
-  n->children[1]->x1 = medianX.x;
-  n->children[1]->x2 = n->x2;
+  n->children[1]->x1 = medianX1.x;
+  n->children[1]->x2 = medianX2.x;
   n->children[1]->y1 = n->y1;
   n->children[1]->y2 = n->y2;
   n->children[1]->start = 0;
   n->children[1]->end = 0;
 
+  n->children[2]->x1 = medianX2.x;
+  n->children[2]->x2 = medianX3.x;
+  n->children[2]->y1 = n->y1;
+  n->children[2]->y2 = n->y2;
+  n->children[2]->start = 0;
+  n->children[2]->end = 0;
+
+  n->children[3]->x1 = medianX3.x;
+  n->children[3]->x2 = n->x2;
+  n->children[3]->y1 = n->y1;
+  n->children[3]->y2 = n->y2;
+  n->children[3]->start = 0;
+  n->children[3]->end = 0;
+
   buildLayeredRangeTreePlusNodeLevel1(n->children[0], elements, n->children[0]->elementCount);
-  buildLayeredRangeTreePlusNodeLevel1(n->children[1], elements + n->children[0]->elementCount, n->children[1]->elementCount); 
+  buildLayeredRangeTreePlusNodeLevel1(n->children[1], elements + n->children[0]->elementCount, n->children[1]->elementCount);
+  buildLayeredRangeTreePlusNodeLevel1(n->children[2],
+      elements + n->children[0]->elementCount + n->children[1]->elementCount, n->children[2]->elementCount); 
+  buildLayeredRangeTreePlusNodeLevel1(n->children[3],
+      elements + n->children[0]->elementCount + n->children[1]->elementCount + n->children[2]->elementCount, n->children[3]->elementCount); 
 }
 
 // returns true if a key falls within a given range.
@@ -550,6 +689,7 @@ bool layeredRangeTreePlusNodeIntersectsRangeLevel1(layeredRangeTreePlusNodeLevel
   return true;
 }
 
+
 // returns true if a node intersects with the given range, false otherwise.
 bool layeredRangeTreePlusNodeIntersectsRangeLevel2(layeredRangeTreePlusNodeLevel2* n, double x1, double x2, double y1, double y2) {
   // ranges lies to the left.
@@ -571,7 +711,6 @@ bool layeredRangeTreePlusNodeIntersectsRangeLevel2(layeredRangeTreePlusNodeLevel
   return true;
 }
 
-
 void layeredRangeTreePlusRangeSearchLevel2(layeredRangeTreePlusNodeLevel2 *n, double x1, double x2, double y1, double y2, int* count) {
   if (n->children == NULL) {
     assert(n->elementCount <= QUAD_TREE_NODE_SIZE);
@@ -592,6 +731,14 @@ void layeredRangeTreePlusRangeSearchLevel2(layeredRangeTreePlusNodeLevel2 *n, do
   if (layeredRangeTreePlusNodeIntersectsRangeLevel2(n->children[1], -200, 200, y1, y2)) {
     layeredRangeTreePlusRangeSearchLevel2(n->children[1], x1, x2, y1, y2, count);
   }
+
+  if (layeredRangeTreePlusNodeIntersectsRangeLevel2(n->children[2], -200, 200, y1, y2)) {
+    layeredRangeTreePlusRangeSearchLevel2(n->children[2], x1, x2, y1, y2, count);
+  }
+  if (layeredRangeTreePlusNodeIntersectsRangeLevel2(n->children[3], -200, 200, y1, y2)) {
+    layeredRangeTreePlusRangeSearchLevel2(n->children[3], x1, x2, y1, y2, count);
+  }
+
 }
 
 void layeredRangeTreePlusRangeSearchLevel1(layeredRangeTreePlusNodeLevel1 *n, double x1, double x2, double y1, double y2, int* count, int offset) {
@@ -632,8 +779,17 @@ void layeredRangeTreePlusRangeSearchLevel1(layeredRangeTreePlusNodeLevel1 *n, do
 
   if (layeredRangeTreePlusNodeIntersectsRangeLevel1(n->children[1], x1, x2, -200, 200)) {
     layeredRangeTreePlusRangeSearchLevel1(n->children[1], x1, x2, y1, y2, count,
+        arg_successor_left2(offset, &n->secondLevelPointer->cnode));
+  }
+  if (layeredRangeTreePlusNodeIntersectsRangeLevel1(n->children[2], x1, x2, -200, 200)) {
+    layeredRangeTreePlusRangeSearchLevel1(n->children[2], x1, x2, y1, y2, count,
         arg_successor_right(offset, &n->secondLevelPointer->cnode));
   }
+  if (layeredRangeTreePlusNodeIntersectsRangeLevel1(n->children[3], x1, x2, -200, 200)) {
+    layeredRangeTreePlusRangeSearchLevel1(n->children[3], x1, x2, y1, y2, count,
+        arg_successor_right2(offset, &n->secondLevelPointer->cnode));
+  }
+
 }
 
 
@@ -641,10 +797,10 @@ void layeredRangeTreePlusRangeSearchLevel1(layeredRangeTreePlusNodeLevel1 *n, do
 layeredRangeTreePlusNodeLevel1* rangeTreePlusRoot;
 
 // collection of elements
-layeredRangeTreePlusKey* allElements;
-int allElementsCount;
-int currentAllElementsArraySize;
-double totalQueryTime;
+layeredRangeTreePlusKey* rtplus_allElements;
+int rtplus_allElementsCount;
+int rtplus_currentAllElementsArraySize;
+double rtplus_totalQueryTime;
 
 void tfkLayeredRangeTreePlus2DRangeSearchCommand(redisClient* c) {
   double x1 = strtod(c->argv[1]->ptr, NULL);
@@ -655,8 +811,8 @@ void tfkLayeredRangeTreePlus2DRangeSearchCommand(redisClient* c) {
   double start_time = tfkLayeredRangeTreePlus_get_time();
   layeredRangeTreePlusRangeSearchLevel1(rangeTreePlusRoot, x1, x2, y1, y2, &count, -1);
   double end_time = tfkLayeredRangeTreePlus_get_time();
-  totalQueryTime += end_time - start_time;
-  printf("total query time %f rangeTreePlusCount: %d \n", totalQueryTime, count); 
+  rtplus_totalQueryTime += end_time - start_time;
+  printf("total query time %f rangeTreePlusCount: %d \n", rtplus_totalQueryTime, count); 
   addReplyLongLong(c, count);
 }
 
@@ -672,20 +828,20 @@ void tfkLayeredRangeTreePlusBuildTreePlusCommand(redisClient *c) {
   rangeTreePlusRoot->y1 = -200;
   rangeTreePlusRoot->y2 = 200; 
   rangeTreePlusRoot->children = NULL;
-  rangeTreePlusRoot->elementCount = allElementsCount;
+  rangeTreePlusRoot->elementCount = rtplus_allElementsCount;
   rangeTreePlusRoot->secondLevelPointer = NULL;
-  // rebuild using the allElements array.
+  // rebuild using the rtplus_allElements array.
 
   // build the first level of the tree.
-  buildLayeredRangeTreePlusNodeLevel1(rangeTreePlusRoot, allElements, allElementsCount);
+  buildLayeredRangeTreePlusNodeLevel1(rangeTreePlusRoot, rtplus_allElements, rtplus_allElementsCount);
 
   // build the second level of the tree.
   layeredRangeTreePlusKey* elementsCopy = (layeredRangeTreePlusKey*) zmalloc(sizeof(layeredRangeTreePlusKey) * rangeTreePlusRoot->elementCount);
-  explodeTreePlus(rangeTreePlusRoot, elementsCopy, allElementsCount);
+  explodeTreePlus(rangeTreePlusRoot, elementsCopy, rtplus_allElementsCount);
   zfree(elementsCopy); 
   
   //walkLayeredRangeTreePlus(rangeTreePlusRoot);
-
+  rtplus_totalQueryTime = 0;
   addReplyLongLong(c, 42);
 }
 
@@ -701,14 +857,14 @@ void tfkLayeredRangeTreePlusAddGenericCommand(redisClient *c, int incr) {
     key.x = x;
     key.y = y;
     key.value = NULL; 
-    if (allElementsCount == currentAllElementsArraySize) {
-      // resize allElementsArray
-      currentAllElementsArraySize += resizeAmount;
-      allElements = (layeredRangeTreePlusKey*) zrealloc((void*)allElements, sizeof(layeredRangeTreePlusKey) * currentAllElementsArraySize);
+    if (rtplus_allElementsCount == rtplus_currentAllElementsArraySize) {
+      // resize rtplus_allElementsArray
+      rtplus_currentAllElementsArraySize += resizeAmount;
+      rtplus_allElements = (layeredRangeTreePlusKey*) zrealloc((void*)rtplus_allElements, sizeof(layeredRangeTreePlusKey) * rtplus_currentAllElementsArraySize);
     }
-    allElements[allElementsCount] = key;
-    allElementsCount++;
-    addReplyLongLong(c, allElementsCount);
+    rtplus_allElements[rtplus_allElementsCount] = key;
+    rtplus_allElementsCount++;
+    addReplyLongLong(c, rtplus_allElementsCount);
 }
 
 void layeredRangeTreePlus2DAddCommand(redisClient *c) {
