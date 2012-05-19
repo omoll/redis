@@ -61,10 +61,10 @@ ARRAY:
 {
 'add':'add2darray',
 'build':'build2darray',
-'range':'range2dstupid'
+'range':'range2darray'
 }
 }
-# #after implementing, may want 'range2darray'
+# #after implementing, may want 'range2darray' 'range2dstupid'
 
 # writeCmd = ["add2d"] #x y
 # rangeCmd = ["range2d"] #xmin xmax ymin ymax
