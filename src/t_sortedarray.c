@@ -88,6 +88,9 @@ void sortedArray2DAddCommand(redisClient *c) {
 
   allElementsByX[allElementsCount] = key;
   allElementsByY[allElementsCount] = key;
+  allX[allElementsCount] = key.x;
+  allY[allElementsCount] = key.y;
+
   allElementsCount++;
   addReplyLongLong(c, allElementsCount);
 }
@@ -101,9 +104,9 @@ int compare(const void * a, const void * b){
 
 void sortedArray2DBuildCommand(redisClient *c) {
   qsort(allElementsByX, allElementsCount, sizeof(sortedArrayKey), compareSortedArrayKeyByX);
-  qsort(allX, allElementsCount, sizeof(sortedArrayKey), compare);
+  qsort(allX, allElementsCount, sizeof(double), compare);
   qsort(allElementsByY, allElementsCount, sizeof(sortedArrayKey), compareSortedArrayKeyByY);
-  qsort(allY, allElementsCount, sizeof(sortedArrayKey), compare);
+  qsort(allY, allElementsCount, sizeof(double), compare);
   addReplyLongLong(c, 42);
 }
 
@@ -125,20 +128,29 @@ void sortedArray2DStupidSearchCommand(redisClient *c) {
 }
 
 void sortedArray2DSearchCommand(redisClient *c) {
-  printf("reading\n");
   double x1 = strtod(c->argv[1]->ptr, NULL);
   double x2 = strtod(c->argv[2]->ptr, NULL);
   double y1 = strtod(c->argv[3]->ptr, NULL);
   double y2 = strtod(c->argv[4]->ptr, NULL);
 
-  double *start = sorted_array_recursive_successor_search(x1, allX, allX + allElementsCount);
+  double *start;
+  int count = 0;
 
-  int i = 0; int count = 0;
-  //  printf("outside loop, i=%d\n",(start - allX)/sizeof(double));
-  for (i = (start - allX)/sizeof(double); i < allElementsCount && allElementsByX[i].x <= x2; i++){
-    if (allElementsByX[i].y >= y1 && allElementsByX[i].y <= y2) count++;
+  //if X is narrower, then search by x first
+  if (x2 - x1 < y2 - y1){
+    printf("byX\n");
+    start = sorted_array_recursive_successor_search(x1, allX, allX + allElementsCount);
+    int i = start - allX;
+    for ( ; i < allElementsCount && allElementsByX[i].x <= x2; i++){
+      if (allElementsByX[i].y >= y1 && allElementsByX[i].y <= y2) count++;
+    }
+  } else {
+    start = sorted_array_recursive_successor_search(y1, allY, allY + allElementsCount);
+    int i = start - allY;
+    for ( ; i < allElementsCount && allElementsByY[i].y <= y2; i++){
+      if (allElementsByY[i].x >= x1 && allElementsByY[i].x <= x2) count++;
+    }
   }
-  addReplyLongLong(c, count);
-  //add binary search on x here see if it still works
-  //then add conditional on x and y.
+
+    addReplyLongLong(c, count);
 }
