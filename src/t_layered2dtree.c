@@ -9,7 +9,7 @@
 // Each leaf in the tree contains this many elements.
 // This must be greater than 2, otherwise splitting range
 // using the median may result in infinite recursion.
-static int LAYERED_TREE_NODE_SIZE = 8;
+static int LAYERED_TREE_NODE_SIZE = 128;
 
 double tfkLayeredRangeTree_get_time()
 {

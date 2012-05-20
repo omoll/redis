@@ -88,7 +88,7 @@ void sortedArray2DAddCommand(redisClient *c) {
 
   if (allElementsCount == currentAllElementsArraySize) {
     currentAllElementsArraySize += resizeAmount;
-    allElementsByX = (sortedArrayKey*) zrealloc((void*)allElementsByX, sizeof(sortedArrayKey)*currentAllElementsArraySize);
+    allElementsByX = (sortedArrayKey*) zrealloc((void*)allElementsByX, sizeof(sortedArrayKey)*currentAllElementsArraySize);    
     allX = (double *) zrealloc((void*)allX, sizeof(double)*currentAllElementsArraySize);
     allElementsByY = (sortedArrayKey*) zrealloc((void*)allElementsByY, sizeof(sortedArrayKey)*currentAllElementsArraySize);
     allY = (double *) zrealloc((void*)allY, sizeof(double)*currentAllElementsArraySize);
@@ -111,6 +111,19 @@ int compare(const void * a, const void * b){
 }
 
 void sortedArray2DBuildCommand(redisClient *c) {
+
+  sortedArrayKey Inf; 
+  Inf.x = DBL_MAX;
+  Inf.y = DBL_MAX;
+  Inf.value = NULL;
+
+  assert(allElementsCount % 10000 != 0);
+
+  allElementsByX[allElementsCount] = Inf;
+  allElementsByY[allElementsCount] = Inf;
+  allX[allElementsCount] = DBL_MAX;
+  allY[allElementsCount] = DBL_MAX;
+
   qsort(allElementsByX, allElementsCount, sizeof(sortedArrayKey), compareSortedArrayKeyByX);
   qsort(allX, allElementsCount, sizeof(double), compare);
   qsort(allElementsByY, allElementsCount, sizeof(sortedArrayKey), compareSortedArrayKeyByY);

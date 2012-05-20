@@ -10,7 +10,7 @@
 // Each leaf in the tree contains this many elements.
 // This must be greater than 2, otherwise splitting range
 // using the median may result in infinite recursion.
-static int LAYERED_TREE_PLUS_OPT_NODE_SIZE = 8;
+static int LAYERED_TREE_PLUS_OPT_NODE_SIZE = 128;
 
 double tfkLayeredRangeTreePlusOpt_get_time()
 {
@@ -23,6 +23,11 @@ double tfkLayeredRangeTreePlusOpt_get_time()
 int min_opt(int a, int b){
   return (a < b)? a : b;
 }
+
+int max_opt(int a, int b){
+  return (a > b)? a : b;
+}
+
 
 typedef struct sortedArray2Key2 {
   double x;
@@ -86,7 +91,6 @@ double *allYopt = NULL;
 void sortedArray22DAddCommand(redisClient *c) {
   double x = strtod(c->argv[1]->ptr, NULL);
   double y = strtod(c->argv[2]->ptr, NULL);
-
   sortedArray2Key2 key;
   key.x = x;
   key.y = y;
@@ -117,6 +121,18 @@ int compare2(const void * a, const void * b){
 }
 
 void sortedArray22DBuildCommand(redisClient *c) {
+  sortedArray2Key2 Inf; 
+  Inf.x = DBL_MAX;
+  Inf.y = DBL_MAX;
+  Inf.value = NULL;
+
+  assert(allElementsCount_opt % 10000 != 0);
+
+  allElementsOptByX[allElementsCount_opt] = Inf;
+  allElementsOptByY[allElementsCount_opt] = Inf;
+  allXopt[allElementsCount_opt] = DBL_MAX;
+  allYopt[allElementsCount_opt] = DBL_MAX;
+
   qsort(allElementsOptByX, allElementsCount_opt, sizeof(sortedArray2Key2), compare2SortedArray2KeyByX);
   qsort(allXopt, allElementsCount_opt, sizeof(double), compare2);
   qsort(allElementsOptByY, allElementsCount_opt, sizeof(sortedArray2Key2), compare2SortedArray2KeyByY);
@@ -901,6 +917,13 @@ int rtplus_opt_allElementsCount_opt;
 int rtplus_opt_currentAllElementsArrayoptSize;
 double rtplus_opt_totalQueryTime;
 
+int sortedUseCount;
+int regularUseCount;
+double running_xmin;
+double running_xmax;
+double running_ymin;
+double running_ymax;
+
 void tfkLayeredRangeTreePlusOpt2DRangeSearchCommand(redisClient* c) {
   double x1 = strtod(c->argv[1]->ptr, NULL);
   double x2 = strtod(c->argv[2]->ptr, NULL);
@@ -909,12 +932,14 @@ void tfkLayeredRangeTreePlusOpt2DRangeSearchCommand(redisClient* c) {
   int count = 0;
 
   // determine which data structure to use.
-  double ratio = min_opt((x2-x1)/(y2-y1), (y2-y1)/(x2-x1));
-  double density = (((double)rtplus_opt_allElementsCount_opt)/10000);
+  double ratio = max_opt((x2-x1)/(y2-y1), (y2-y1)/(x2-x1));
+  double totalArea = (running_xmax - running_xmin)*(running_ymax - running_ymin);
+  double density = (((double)rtplus_opt_allElementsCount_opt)/totalArea);
   double k = density*(y2-y1)*(x2-x1); // estimated number of points reported.
-  double cutoff = rtplus_opt_allElementsCount_opt / (2*k);
+  double cutoff = rtplus_opt_allElementsCount_opt / (100*k);
 
   if (ratio < cutoff) {
+    regularUseCount++;
   //if (true){
     // use the cascading tree.
     double start_time = tfkLayeredRangeTreePlusOpt_get_time();
@@ -922,6 +947,7 @@ void tfkLayeredRangeTreePlusOpt2DRangeSearchCommand(redisClient* c) {
     double end_time = tfkLayeredRangeTreePlusOpt_get_time();
     rtplus_opt_totalQueryTime += end_time - start_time;
   } else {
+    sortedUseCount++;
     // otherwise use filtering approach.
     double start_time = tfkLayeredRangeTreePlusOpt_get_time();
     double *scan_start;
@@ -940,14 +966,17 @@ void tfkLayeredRangeTreePlusOpt2DRangeSearchCommand(redisClient* c) {
       }
     }
     double end_time = tfkLayeredRangeTreePlusOpt_get_time();
-    printf("All elemnts for sorted array %d \n", allElementsCount_opt);
+    //printf("All elemnts for sorted array %d \n", allElementsCount_opt);
     rtplus_opt_totalQueryTime += end_time - start_time;
   }
   printf("total query time %f rangeTreePlusOptCount: %d \n", rtplus_opt_totalQueryTime, count); 
+  printf("sortedUseCount: %d, regularUseCount: %d \n", sortedUseCount, regularUseCount);
   addReplyLongLong(c, count);
 }
 
 void tfkLayeredRangeTreePlusOptBuildTreePlusOptCommand(redisClient *c) {
+  sortedUseCount = 0;
+  regularUseCount = 0;
   if (rangeTreePlusOptRoot != NULL){
     // delete the old quad tree.
     layeredRangeTreePlusOptDeleteNodeLevel1(rangeTreePlusOptRoot);
@@ -976,11 +1005,25 @@ void tfkLayeredRangeTreePlusOptBuildTreePlusOptCommand(redisClient *c) {
   addReplyLongLong(c, 42);
 }
 
+
 /* This generic command implements both ZADD and ZINCRBY. */
 void tfkLayeredRangeTreePlusOptAddGenericCommand(redisClient *c, int incr) {
     double x = strtod(c->argv[1]->ptr, NULL);
     double y = strtod(c->argv[2]->ptr, NULL);
     
+  if (x < running_xmin){
+    running_xmin = x;
+  }
+  if (x > running_xmax){
+    running_xmax = x;
+  }
+  if (y < running_ymin) {
+    running_ymin = y;
+  }
+  if (y > running_ymax) {
+    running_ymax = y;
+  }
+
     int resizeAmountOpt = 10000;
   
     // create a layeredRangeTreePlusOptKey
