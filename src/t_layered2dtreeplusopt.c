@@ -10,7 +10,7 @@
 // Each leaf in the tree contains this many elements.
 // This must be greater than 2, otherwise splitting range
 // using the median may result in infinite recursion.
-static int LAYERED_TREE_PLUS_OPT_NODE_SIZE = 128;
+static int LAYERED_TREE_PLUS_OPT_NODE_SIZE = 6;
 
 double tfkLayeredRangeTreePlusOpt_get_time()
 {
@@ -78,7 +78,7 @@ int compare2SortedArray2KeyByY (const void * a, const void * b)
   else return 0;
 }
 
-int resizeAmountOpt = 10000;
+int resizeAmountOpt = 10001;
 int allElementsCount_opt = 0;
 int currentAllElementsArrayoptSize = 0;
 
@@ -126,7 +126,7 @@ void sortedArray22DBuildCommand(redisClient *c) {
   Inf.y = DBL_MAX;
   Inf.value = NULL;
 
-  assert(allElementsCount_opt % 10000 != 0);
+  assert(allElementsCount_opt % resizeAmountOpt != 0);
 
   allElementsOptByX[allElementsCount_opt] = Inf;
   allElementsOptByY[allElementsCount_opt] = Inf;
@@ -936,7 +936,10 @@ void tfkLayeredRangeTreePlusOpt2DRangeSearchCommand(redisClient* c) {
   double totalArea = (running_xmax - running_xmin)*(running_ymax - running_ymin);
   double density = (((double)rtplus_opt_allElementsCount_opt)/totalArea);
   double k = density*(y2-y1)*(x2-x1); // estimated number of points reported.
-  double cutoff = ((double)3*rtplus_opt_allElementsCount_opt) / (4*k);
+  double n = (double)rtplus_opt_allElementsCount_opt;
+  double cutoff = k*n/pow((20*log10(n) + k),2);
+  
+  //  double cutoff = ((double)3*rtplus_opt_allElementsCount_opt) / (4*k);
 
   if (ratio < cutoff) {
     regularUseCount++;
@@ -971,6 +974,8 @@ void tfkLayeredRangeTreePlusOpt2DRangeSearchCommand(redisClient* c) {
   }
   printf("total query time %f rangeTreePlusOptCount: %d \n", rtplus_opt_totalQueryTime, count); 
   printf("sortedUseCount: %d, regularUseCount: %d \n", sortedUseCount, regularUseCount);
+  printf("actual cutoff used:%f\n", cutoff);  
+
   addReplyLongLong(c, count);
 }
 
@@ -1024,7 +1029,7 @@ void tfkLayeredRangeTreePlusOptAddGenericCommand(redisClient *c, int incr) {
     running_ymax = y;
   }
 
-    int resizeAmountOpt = 10000;
+  //    int resizeAmountOpt = 10000;// defined elsewhere dont touch
   
     // create a layeredRangeTreePlusOptKey
     layeredRangeTreePlusOptKey key;
