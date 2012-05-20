@@ -9,7 +9,7 @@
 // Each leaf in the tree contains this many elements.
 // This must be greater than 2, otherwise splitting range
 // using the median may result in infinite recursion.
-static int QUAD_TREE_NODE_SIZE = 64;
+static int LAYERED_TREE_NODE_SIZE = 64;
 
 double tfkLayeredRangeTree_get_time()
 {
@@ -129,10 +129,10 @@ int layeredRangeTreeElementCompareY(const void* a, const void* b){
 void buildLayeredRangeTreeNodeLevel2 (layeredRangeTreeNodeLevel2* n, layeredRangeTreeKey* elements, int elementCount) {
   n->elementCount = elementCount;
   // Coarsen 
-  if (n->elementCount <= QUAD_TREE_NODE_SIZE) {
+  if (n->elementCount <= LAYERED_TREE_NODE_SIZE) {
     n->start = 0; 
     n->end = n->elementCount;
-    n->elements = (layeredRangeTreeKey*) zmalloc(sizeof(layeredRangeTreeKey) * QUAD_TREE_NODE_SIZE);
+    n->elements = (layeredRangeTreeKey*) zmalloc(sizeof(layeredRangeTreeKey) * LAYERED_TREE_NODE_SIZE);
     for (int i = 0; i < n->elementCount; i++) {
       n->elements[i] = elements[i];
     }
@@ -175,7 +175,7 @@ void buildLayeredRangeTreeNodeLevel2 (layeredRangeTreeNodeLevel2* n, layeredRang
 // builds a second level of the quad tree.
 void explodeTree(layeredRangeTreeNodeLevel1* n, layeredRangeTreeKey* elements, int elementCount){
   n->secondLevelPointer = NULL;
-  if (n->elementCount <= QUAD_TREE_NODE_SIZE) {
+  if (n->elementCount <= LAYERED_TREE_NODE_SIZE) {
     assert(elementCount == n->elementCount);
     // this is a leaf node, copy its elements into the array.
     memcpy(elements, n->elements, elementCount * sizeof(layeredRangeTreeKey));
@@ -206,10 +206,10 @@ void buildLayeredRangeTreeNodeLevel1(layeredRangeTreeNodeLevel1* n, layeredRange
   n->secondLevelPointer = NULL;
 
   // Coarsen 
-  if (n->elementCount <= QUAD_TREE_NODE_SIZE) {
+  if (n->elementCount <= LAYERED_TREE_NODE_SIZE) {
     n->start = 0; 
     n->end = n->elementCount;
-    n->elements = (layeredRangeTreeKey*) zmalloc(sizeof(layeredRangeTreeKey) * QUAD_TREE_NODE_SIZE);
+    n->elements = (layeredRangeTreeKey*) zmalloc(sizeof(layeredRangeTreeKey) * LAYERED_TREE_NODE_SIZE);
     for (int i = 0; i < n->elementCount; i++) {
       n->elements[i] = elements[i];
     }
@@ -304,7 +304,7 @@ bool layeredRangeTreeNodeIntersectsRangeLevel2(layeredRangeTreeNodeLevel2* n, do
 
 void layeredRangeTreeRangeSearchLevel2(layeredRangeTreeNodeLevel2 *n, double x1, double x2, double y1, double y2, int* count) {
   if (n->children == NULL) {
-    assert(n->elementCount <= QUAD_TREE_NODE_SIZE);
+    assert(n->elementCount <= LAYERED_TREE_NODE_SIZE);
     for (int i = n->start; i < n->end; i++) {
       if (layeredRangeTreeKeyInRange(n->elements[i], -200, 200, y1, y2)){
         (*count)++;
@@ -326,7 +326,7 @@ void layeredRangeTreeRangeSearchLevel2(layeredRangeTreeNodeLevel2 *n, double x1,
 
 void layeredRangeTreeRangeSearchLevel1(layeredRangeTreeNodeLevel1 *n, double x1, double x2, double y1, double y2, int* count) {
   if (n->children == NULL) {
-    assert(n->elementCount <= QUAD_TREE_NODE_SIZE);
+    assert(n->elementCount <= LAYERED_TREE_NODE_SIZE);
     // if we get to a leaf just scan through the elements and report the ones in the range.
     for (int i = n->start; i < n->end; i++) {
       if (layeredRangeTreeKeyInRange(n->elements[i], x1, x2, y1, y2)){
