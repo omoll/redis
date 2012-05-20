@@ -123,7 +123,7 @@ void sortedArray2DStupidSearchCommand(redisClient *c) {
   double y1 = strtod(c->argv[3]->ptr, NULL);
   double y2 = strtod(c->argv[4]->ptr, NULL);
 
-  double start = tfkSortedArray_get_time(); 
+  printf("warning, don't use the stupid search command anymore, it was for testing\n");
   //this here does a stupid scan
   int count = 0;
   int i = 0;
@@ -133,10 +133,9 @@ void sortedArray2DStupidSearchCommand(redisClient *c) {
       count++;
     }
   }
-  double end = tfkSortedArray_get_time();
  
-  sortedArray_totalQueryTime += end - start;
-  printf("Total query time %f \n",sortedArray_totalQueryTime);
+
+
   addReplyLongLong(c, count);
 }
 
@@ -146,24 +145,28 @@ void sortedArray2DSearchCommand(redisClient *c) {
   double y1 = strtod(c->argv[3]->ptr, NULL);
   double y2 = strtod(c->argv[4]->ptr, NULL);
 
-  double *start;
+  double start = tfkSortedArray_get_time(); 
+
+  double *scan_start;
   int count = 0;
 
   //if X is narrower, then search by x first
   if (x2 - x1 < y2 - y1){
-    printf("byX\n");
-    start = sorted_array_recursive_successor_search(x1, allX, allX + allElementsCount);
-    int i = start - allX;
+    scan_start = sorted_array_recursive_successor_search(x1, allX, allX + allElementsCount);
+    int i = scan_start - allX;
     for ( ; i < allElementsCount && allElementsByX[i].x <= x2; i++){
       if (allElementsByX[i].y >= y1 && allElementsByX[i].y <= y2) count++;
     }
   } else {
-    start = sorted_array_recursive_successor_search(y1, allY, allY + allElementsCount);
-    int i = start - allY;
+    scan_start = sorted_array_recursive_successor_search(y1, allY, allY + allElementsCount);
+    int i = scan_start - allY;
     for ( ; i < allElementsCount && allElementsByY[i].y <= y2; i++){
       if (allElementsByY[i].x >= x1 && allElementsByY[i].x <= x2) count++;
     }
   }
 
-    addReplyLongLong(c, count);
+  double end = tfkSortedArray_get_time();
+  sortedArray_totalQueryTime += end - start;
+  printf("Total query time %f. sortedArray count: %d \n",sortedArray_totalQueryTime, count);
+  addReplyLongLong(c, count);
 }
