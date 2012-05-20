@@ -8,7 +8,7 @@
 // Each leaf in the tree contains this many elements.
 // This must be greater than 2, otherwise splitting range
 // using the median may result in infinite recursion.
-static int QUAD_TREE_NODE_SIZE = 3;
+static int QUAD_TREE_NODE_SIZE = 64;
 static double REBALANCE_FRACTION = 1.5;
 
 double tfk_get_time()

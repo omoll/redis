@@ -10,7 +10,7 @@
 // Each leaf in the tree contains this many elements.
 // This must be greater than 2, otherwise splitting range
 // using the median may result in infinite recursion.
-static int QUAD_TREE_NODE_SIZE = 16;
+static int QUAD_TREE_NODE_SIZE = 64;
 
 double tfkLayeredRangeTreePlus_get_time()
 {
