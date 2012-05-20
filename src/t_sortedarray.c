@@ -17,6 +17,7 @@ double tfkSortedArray_get_time()
     return t.tv_sec + t.tv_usec*1e-6;
 }
 double sortedArray_totalQueryTime;
+
 typedef struct sortedArrayKey {
   double x;
   double y;
