@@ -936,7 +936,7 @@ void tfkLayeredRangeTreePlusOpt2DRangeSearchCommand(redisClient* c) {
   double totalArea = (running_xmax - running_xmin)*(running_ymax - running_ymin);
   double density = (((double)rtplus_opt_allElementsCount_opt)/totalArea);
   double k = density*(y2-y1)*(x2-x1); // estimated number of points reported.
-  double cutoff = rtplus_opt_allElementsCount_opt / (100*k);
+  double cutoff = ((double)3*rtplus_opt_allElementsCount_opt) / (4*k);
 
   if (ratio < cutoff) {
     regularUseCount++;
