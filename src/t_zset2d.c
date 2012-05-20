@@ -8,7 +8,7 @@
 // Each leaf in the tree contains this many elements.
 // This must be greater than 2, otherwise splitting range
 // using the median may result in infinite recursion.
-static int QUAD_TREE_NODE_SIZE = 3;
+static int KD_TREE_NODE_SIZE = 64;
 static double REBALANCE_FRACTION = 1.5;
 
 double tfk_get_time()
@@ -137,8 +137,8 @@ void splitQuadTreeNode(quadTreeNode* n){
     n->children[0]->children = NULL;
     n->children[1]->children = NULL;
  
-    n->children[0]->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*QUAD_TREE_NODE_SIZE);
-    n->children[1]->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*QUAD_TREE_NODE_SIZE);
+    n->children[0]->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*KD_TREE_NODE_SIZE);
+    n->children[1]->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*KD_TREE_NODE_SIZE);
 
     n->children[0]->elementCount = 0;
     n->children[1]->elementCount = 0;
@@ -173,8 +173,8 @@ void splitQuadTreeNode(quadTreeNode* n){
     n->children[1]->children = NULL;
    
 
-    n->children[0]->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*QUAD_TREE_NODE_SIZE);
-    n->children[1]->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*QUAD_TREE_NODE_SIZE);
+    n->children[0]->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*KD_TREE_NODE_SIZE);
+    n->children[1]->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*KD_TREE_NODE_SIZE);
 
     n->children[0]->x1 = n->x1;
     n->children[0]->x2 = medianX.x;
@@ -208,10 +208,10 @@ void buildQuadTreeNode(quadTreeNode* n, quadTreeKey* elements, int elementCount,
   n->elementCount = elementCount;
   n->split = split;
 
-  if (n->elementCount <= QUAD_TREE_NODE_SIZE) {
+  if (n->elementCount <= KD_TREE_NODE_SIZE) {
     n->start = 0; 
     n->end = n->elementCount;
-    n->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey) * QUAD_TREE_NODE_SIZE);
+    n->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey) * KD_TREE_NODE_SIZE);
     for (int i = 0; i < n->elementCount; i++) {
       n->elements[i] = elements[i];
     }
@@ -321,7 +321,7 @@ bool quadTreeInsert(quadTreeNode* n, quadTreeKey key){
         return false;
       }
     }
-    if (n->end - n->start >= QUAD_TREE_NODE_SIZE) {
+    if (n->end - n->start >= KD_TREE_NODE_SIZE) {
       splitQuadTreeNode(n);
     } else {
       n->elements[n->end] = key;
@@ -408,9 +408,9 @@ void quadTreeDelete(quadTreeNode* n, quadTreeKey key){
 
   // check if everything can fit into this node.
   if (n->children[0]->end - n->children[0]->start +
-      n->children[1]->end - n->children[1]->start <= QUAD_TREE_NODE_SIZE) {
+      n->children[1]->end - n->children[1]->start <= KD_TREE_NODE_SIZE) {
     int j = n->start;
-    n->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey) * QUAD_TREE_NODE_SIZE);
+    n->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey) * KD_TREE_NODE_SIZE);
 
     for (int i = n->children[0]->start; i < n->children[0]->end; i++) {
       n->elements[j] = n->children[0]->elements[i];
@@ -567,7 +567,7 @@ void tfkAddGenericCommand(redisClient *c, int incr) {
     a->y2 = 100; 
     a->children = NULL;
     a->split = 1;
-    a->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*QUAD_TREE_NODE_SIZE);
+    a->elements = (quadTreeKey*) zmalloc(sizeof(quadTreeKey)*KD_TREE_NODE_SIZE);
     a->elementCount = 0;
     } 
     quadTreeKey key1;
